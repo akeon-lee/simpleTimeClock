@@ -1,0 +1,91 @@
+/**
+ * Variables
+ */
+
+$assortedPercents: (
+  verySmall: 10%,
+  small: 30%,
+  medium: 50%,
+  large: 80%,
+  full: 100%
+);
+
+$assortedNums: (
+  veryLight: 0.5em,
+  light: 1em,
+  medium: 2em,
+  heavy: 3em,
+  veryHeavy: 5em
+);
+
+$colors: (
+  white: white,
+  red: red,
+  blue: blue,
+  skyblue: skyblue,
+  green: green,
+  purple: purple,
+  yellow: yellow,
+  darkGrey: #333,
+  nearBlack: #111
+);
+
+@function assortedPercents($p) {
+  @return map-get($assortedPercents, $p);
+}
+
+@function assortedNums($n) {
+  @return map-get($assortedNums, $n);
+}
+
+@function colors($c) {
+  @return map-get($colors, $c);
+}
+
+/* Universal */
+body {
+  background: #e5e5e5;
+}
+
+.spacerTB {
+  padding: assortedNums(veryLight) 0;
+}
+
+.blackBorder {
+  border: 1px solid #000;
+}
+
+.spacerLR {
+  padding: 0 assortedNums(veryLight);
+}
+
+/* Main screen */
+.main-container {
+  padding: assortedNums(medium) 0;
+  /* Level 1 */
+  .buttons {
+    padding: assortedNums(light) 0;
+
+    button {
+      margin-bottom: assortedNums(light);
+    }
+
+  }
+
+  .loadClock {
+    padding: assortedNums(light) 0;
+    font-size: 6rem;
+    font-weight: bold;
+    border: 1px #000 dotted;
+
+    .seconds {
+      font-size: 5rem;
+      font-weight: bold;
+    }
+  }
+}
+
+/* Manage users */
+.users-container {
+  padding: assortedNums(medium) 0;
+}

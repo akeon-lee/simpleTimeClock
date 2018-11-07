@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Manage Users</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.4.1/semantic.min.css">
+  <link rel="stylesheet" href="../public/css/style.css">
+</head>
+<body>
+  
+  <div class="users-container ui container">
+    <div class="ui huge grey dividing header center aligned">Manage Users</div>
+    <div class="spacerTB"></div>
+    <form class="ui form">
+      <div class="two fields">
+        <div class="field">
+          <input type="text" name="firstName" placeholder="First Name">
+        </div>
+        <div class="field">
+          <input type="text" name="lastName" placeholder="Last Name">
+        </div>
+      </div>
+      <div class="field">
+        <div class="field">
+          <select class="ui fluid search dropdown" name="level">
+            <option value="admin">Admin</option>
+            <option value="employee" selected>Employee</option>
+          </select>
+        </div>
+      </div>
+      <button class="ui huge green button" type="submit">Add</button>
+    </form>
+  </div>
+
+  <script>let exports = {}; // This fixes exports not defined bug</script>
+  <script src="../public/js/manageUsers.js"></script>
+  <script src="../public/js/main.js"></script>
+</body>
+</html>

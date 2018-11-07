@@ -1,0 +1,36 @@
+/**
+ * Variables
+ */
+/* Universal */
+body {
+  background: #e5e5e5; }
+
+.spacerTB {
+  padding: 0.5em 0; }
+
+.blackBorder {
+  border: 1px solid #000; }
+
+.spacerLR {
+  padding: 0 0.5em; }
+
+/* Main screen */
+.main-container {
+  padding: 2em 0;
+  /* Level 1 */ }
+  .main-container .buttons {
+    padding: 1em 0; }
+    .main-container .buttons button {
+      margin-bottom: 1em; }
+  .main-container .loadClock {
+    padding: 1em 0;
+    font-size: 6rem;
+    font-weight: bold;
+    border: 1px #000 dotted; }
+    .main-container .loadClock .seconds {
+      font-size: 5rem;
+      font-weight: bold; }
+
+/* Manage users */
+.users-container {
+  padding: 2em 0; }

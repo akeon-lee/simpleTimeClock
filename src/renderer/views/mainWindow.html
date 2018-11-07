@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Simple Time Clock</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.4.1/semantic.min.css">
+  <link rel="stylesheet" href="../public/css/style.css">
+</head>
+<body>
+  <!-- <ul></ul> -->
+  <div class="main-container ui container center aligned">
+    <div class="clockContainer">
+      <div class="loadClock"></div>
+    </div>
+    <div class="spacerTB"></div>
+    <div class="blackBorder ui corner labeled input huge">
+      <input type="text" class="userID" placeholder="Enter Your ID...">
+      <div class="ui corner label">
+        <i class="user icon"></i>
+      </div>
+    </div>
+    <div class="buttons">
+      <button class="clockIn ui button massive green">
+        Clock In
+      </button>
+      <button class="clockOut ui button massive red">
+        Clock Out
+      </button>
+    </div>
+    <div class="inputs">
+      <form class="notes ui huge input">
+        <input type="text" class="addNotes" placeholder="Add Notes...">
+        <button class="ui icon button blue" type="submit"><i class="sticky note icon"></i></button>
+      </form>
+    </div>
+  </div>
+
+  <script>let exports = {}; // This fixes exports not defined bug</script>
+  <script src="../public/js/mainWindow.js"></script>
+  <script src="../public/js/main.js"></script>
+</body>
+</html>
