@@ -24,11 +24,11 @@ body {
       margin-bottom: 1em; }
   .main-container .loadClock {
     padding: 1em 0;
-    font-size: 6rem;
+    font-size: 5rem;
     font-weight: bold;
     border: 1px #000 dotted; }
     .main-container .loadClock .seconds {
-      font-size: 5rem;
+      font-size: 3rem;
       font-weight: bold; }
 
 /* Manage users */

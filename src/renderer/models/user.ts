@@ -3,5 +3,8 @@ export interface User {
   level: string,
   firstName: string,
   lastName?: string,
-  data?: object
+  session: {
+    status: boolean
+  },
+  data: Array<object>
 }

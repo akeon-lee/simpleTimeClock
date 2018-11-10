@@ -11,7 +11,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { User } from '../../models/user';
-import { resolve } from 'url';
 
 type Data = {
   baseDir: string,
@@ -140,14 +139,17 @@ lib.list = (dir): Promise<object> => {
  * 
  */
 
-// Function to react to form submission
+// Function to react to form submission when adding a user
 const form: HTMLFormElement = document.querySelector('form');
 /** 
  * @todo: Get The id to equal date + number format 
  * */
 let date = new Date();
-let m = date.getMonth() + 1, d = date.getDate().toString(), y = date.getFullYear().toString().substr(-2), s = date.getSeconds().toString();
+let m = date.getMonth() + 1, d = checkNum(date.getDate().toString()), y = date.getFullYear().toString().substr(-2), s = date.getSeconds().toString();
 const id = m+d+y+s;
+
+// Function to add 0 to decimals less than 10
+function checkNum(i): number { if(i < 10) { i = '0' + i; } return i; };
 
 form.addEventListener('submit', (e) => {
   e.preventDefault();
@@ -158,7 +160,10 @@ form.addEventListener('submit', (e) => {
   for (const [key, value] of formData.entries()) {
     userData.id = Number(id);
     userData[key] = <string>value;
-    userData.data = {};
+    userData.session = {
+      status: false
+    };
+    userData.data = [];
   }
   
   // Create the user
