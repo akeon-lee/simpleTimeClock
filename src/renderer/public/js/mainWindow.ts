@@ -110,6 +110,14 @@ window.onload = () => {
   const clockOut: HTMLElement = document.querySelector('.clockOut');
   const userID: HTMLInputElement = document.querySelector('.userID');
 
+  /**
+   * @todo: Delete this when not needed 
+   */
+  // lib.read('users', 11101841)
+  //   .then(data => {
+  //     console.log(data);
+  //   });
+
   // Add the session to the user. Input clocked in time & date
   clockIn.addEventListener('click', (e) => {
     lib.read('users', userID.value)

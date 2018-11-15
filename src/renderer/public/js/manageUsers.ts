@@ -16,6 +16,7 @@ type Data = {
   baseDir: string,
   create: Function,
   read: Function,
+  getFiles: Function,
   update: Function,
   delete: Function,
   list: Function
@@ -29,19 +30,19 @@ lib.baseDir = path.join(__dirname, '../../.data/');
 lib.create = (dir, file, data): Promise<object> => {
   return new Promise((resolve, reject) => {
     // Open the file for writing
-    fs.open(`${lib.baseDir + dir}/${file}.json`, 'wx', (err, fileDescriptor) => {
-      if(!err && fileDescriptor) {
+    fs.open(`${lib.baseDir + dir}/${file}.json`, 'wx', (error, fileDescriptor) => {
+      if(!error && fileDescriptor) {
         // Convert the data to a string
         const stringData = JSON.stringify(data);
   
         // Write to file and close it
-        fs.writeFile(fileDescriptor, stringData, (err) => {
-          if(err) {
+        fs.writeFile(fileDescriptor, stringData, (error) => {
+          if(error) {
             reject({ error: 'Error writing to file' });
           }
   
-          fs.close(fileDescriptor, (err) => {
-            if(err) {
+          fs.close(fileDescriptor, (error) => {
+            if(error) {
               reject({ error: 'Error closing new file' });
             }
             resolve({ success: 'The user has been created' });
@@ -60,7 +61,27 @@ lib.read = (dir, file): Promise<object> => {
     fs.readFile(`${lib.baseDir + dir}/${file}.json`, 'utf-8', (error, data) => {
       if(!error && data) {
         const parsedData = JSON.parse(data);
-        resolve({ success: parsedData });
+        resolve({ parsedData });
+      } else {
+        reject({ error });
+      }
+    });
+  });
+}
+
+// Get all data from folder
+lib.getFiles = (dir): Promise<object> => {
+  return new Promise((resolve, reject) => {
+    fs.readdir(`${lib.baseDir + dir}`, (error, files) => {
+      if(!error && files) {
+        const fileNames = [];
+        // Loop through and read each file
+        for(const file of files) {
+          // Remove .json ending
+          const fileName = file.replace('.json', '');
+          fileNames.push(fileName);
+        }
+        resolve({ fileNames });
       } else {
         reject({ error });
       }
@@ -72,25 +93,25 @@ lib.read = (dir, file): Promise<object> => {
 lib.update = (dir, file, data): Promise<object> => {
   return new Promise((resolve, reject) => {
     // Open the file for writing
-    fs.open(`${lib.baseDir + dir}/${file}.json`, 'r+', (err, fileDescriptor) => {
-      if(!err && fileDescriptor) {
+    fs.open(`${lib.baseDir + dir}/${file}.json`, 'r+', (error, fileDescriptor) => {
+      if(!error && fileDescriptor) {
         // Convert data to a string
         const stringData = JSON.stringify(data);
 
         // Truncate the contents of the file
-        fs.ftruncate(fileDescriptor, (err) => {
-          if(err) {
+        fs.ftruncate(fileDescriptor, (error) => {
+          if(error) {
             reject({ error: 'Error truncating file' });
           }
 
           // Write to the file and close it
-          fs.writeFile(fileDescriptor, stringData, (err) => {
-            if(err) {
+          fs.writeFile(fileDescriptor, stringData, (error) => {
+            if(error) {
               reject({ error: 'Error writing to existing file' });
             }
 
-            fs.close(fileDescriptor, (err) => {
-              if(err) {
+            fs.close(fileDescriptor, (error) => {
+              if(error) {
                 reject({ error: 'Error with closing existing file' });
               }
               resolve({ success: 'File has been updated' });
@@ -171,5 +192,32 @@ form.addEventListener('submit', (e) => {
     .then((done) => {
       console.log(done);
     })
-  .catch(err => console.log(err));
+  .catch(error => console.log(error));
 });
+
+/**
+ * @todo: Update this so it is inserting each table row properly using inserAdjacentHTML or something like that.
+ */
+// Get all users data
+lib.getFiles('users')
+  .then(files => {
+    const listUsersElement: HTMLElement = document.querySelector('#list-users');
+    // Loop through each file and read the data
+    for(const file of files.fileNames) {
+      lib.read('users', file)
+        .then(users => {
+          // Create the elements and push them into the array
+          const tableRow = `
+            <tr>
+              <td data-label="id">${users.parsedData.id}</td>
+              <td data-label="name">${users.parsedData.firstName} ${users.parsedData.lastName}</td>
+              <td data-label="level">${users.parsedData.level}</td>
+              <td data-label="Job"><button class="ui green tiny button">Get Data</button></td>
+            </tr>
+          `;
+          listUsersElement.innerHTML += tableRow;
+        })
+      .catch(error => console.error(error));
+    }
+  })
+.catch(error => console.error({ error }));

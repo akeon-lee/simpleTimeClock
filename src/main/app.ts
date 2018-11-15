@@ -10,8 +10,9 @@ const { app, BrowserWindow, Menu } = electron;
 process.env.NODE_ENV = 'development';
 
 // Create var for windows in app
-let mainWindow: Object;
-let manageUsers: Object;
+let mainWindow: Object, 
+    manageUsers: Object, 
+    settings: Object;
 
 // Listen for the app to be ready
 app.on('ready', () => {
@@ -38,12 +39,12 @@ app.on('ready', () => {
   Menu.setApplicationMenu(mainMenu);
 });
 
-// Handle additional window
+// Handle manage users window
 function createManageUsersWindow() {
   // Create new window
   manageUsers = new BrowserWindow({
-    width: 700,
-    height: 500,
+    width: 980,
+    height: 600,
     title: 'Add A User'
   });
   // Load the html file into the window
@@ -59,6 +60,27 @@ function createManageUsersWindow() {
   });
 }
 
+// Handle settings window
+function createSettingsWindow() {
+  // Create new window
+  settings = new BrowserWindow({
+    width: 700,
+    height: 500,
+    title: 'Settings'
+  });
+  // Load the html file
+  (<any>settings).loadURL(url.format({
+    pathname: path.join(__dirname, '../renderer/views/settings.html'),
+    protocol: 'file:',
+    slashes: true
+  }));
+
+  // Garbage collection
+  (<any>settings).on('closed', () => {
+    settings = null;
+  });
+}
+
 // Create menu template
 const mainMenuTemplate: Array<object> = [
   {
@@ -69,6 +91,13 @@ const mainMenuTemplate: Array<object> = [
         accelerator: process.platform === 'darwin' ? 'Command+Shift+A' : 'Ctrl+Shift+A',
         click() {
           createManageUsersWindow();
+        }
+      },
+      {
+        label: 'Settings',
+        accelerator: process.platform === 'darwin' ? 'Command+,' : 'Ctrl+,',
+        click() {
+          createSettingsWindow();
         }
       },
       {
