@@ -8,8 +8,8 @@
  */
 
 // Dependencies
-import * as fs from 'fs';
 import * as path from 'path';
+import * as fs from 'fs';
 import { User } from '../../models/user';
 
 type Data = {
@@ -195,29 +195,111 @@ form.addEventListener('submit', (e) => {
   .catch(error => console.log(error));
 });
 
-/**
- * @todo: Update this so it is inserting each table row properly using inserAdjacentHTML or something like that.
- */
 // Get all users data
 lib.getFiles('users')
   .then(files => {
-    const listUsersElement: HTMLElement = document.querySelector('#list-users');
+    const usersTable: HTMLElement = document.querySelector('.list-users');
     // Loop through each file and read the data
     for(const file of files.fileNames) {
       lib.read('users', file)
         .then(users => {
           // Create the elements and push them into the array
-          const tableRow = `
+          const tableRow: string = `
             <tr>
-              <td data-label="id">${users.parsedData.id}</td>
-              <td data-label="name">${users.parsedData.firstName} ${users.parsedData.lastName}</td>
-              <td data-label="level">${users.parsedData.level}</td>
-              <td data-label="Job"><button class="ui green tiny button">Get Data</button></td>
+              <td data-value="${users.parsedData.id}">
+                ${users.parsedData.id}
+              </td>
+              <td data-value="${users.parsedData.firstName} ${users.parsedData.lastName}">
+                ${users.parsedData.firstName} ${users.parsedData.lastName}
+              </td>
+              <td data-value="${users.parsedData.level}">
+                ${users.parsedData.level}
+              </td>
+              <td data-value="Job">
+                <button class="ui green tiny button" onclick="getData(this)">Get Data</button>
+              </td>
             </tr>
           `;
-          listUsersElement.innerHTML += tableRow;
+          usersTable.insertAdjacentHTML('afterbegin', tableRow);
         })
       .catch(error => console.error(error));
     }
   })
 .catch(error => console.error({ error }));
+
+// Function to get the specified users data from list button
+async function getData(element): Promise<void> {
+  // Grab the entire row which the button was clicked on
+  const userRow: HTMLElement = element.parentNode.parentNode;
+  const id: string | number = userRow.querySelector('td').getAttribute('data-value');
+
+  // Clean the modal before opening a different user
+  cleanUserModal();
+
+  const data: { parsedData } = await lib.read('users', id);
+  const user: User = data.parsedData;
+  const header: HTMLElement = document.querySelector('.modal-header');
+  const usersDataTable: HTMLElement = document.querySelector('.list-users-data');
+
+  // Insert the users name and id for the title
+  const title: string = `<h3 class="insert">${user.firstName} ${user.lastName} - ${user.id}</h3>`;
+  header.insertAdjacentHTML('afterbegin', title);
+
+  // Loop through users data
+  for(const session of user.data) {
+    const note = session['notes'].map(notes => notes.note);
+
+    // Insert the users data into the table for the body
+    const content: string = `
+      <tr class="insert">
+        <td data-value="${session['inDate']}">
+          ${session['inDate']}
+        </td>
+        <td data-value="${session['clockIn']}">
+          ${session['clockIn']}
+        </td>
+        <td data-value="${session['clockOut']}">
+          ${session['clockOut']}
+        </td>
+        <td data-value="${'placeholder'}">
+          ${note}
+        </td>
+      </tr>
+    `;
+    usersDataTable.insertAdjacentHTML('afterbegin', content);
+  }
+
+  // Open the modal with users data
+  openUserModal();
+}
+
+// Function to clean the user modal before opening it
+function cleanUserModal(): void {
+  const inserts: NodeListOf<Element> = document.querySelectorAll('.insert');
+
+  // Remove previous data with the className insert
+  for(const insert of inserts) {
+    insert.remove();
+  }
+}
+
+// Function to open the user modal.
+function openUserModal(): void {
+  // Get the elements needed to open and close modal
+  const modal: HTMLElement = document.querySelector('.userModal');
+  const span: HTMLElement = document.querySelector('.close');
+  
+  modal.style.display = 'block';
+  
+  // When the user clicks on <span> (x), close the modal
+  span.onclick = () => {
+    modal.style.display = 'none';
+  }
+  
+  // When the user clicks anywhere outside of the modal, close it
+  window.onclick = (event) => {
+    if (event.target == modal) {
+        modal.style.display = 'none';
+    }
+  }
+}

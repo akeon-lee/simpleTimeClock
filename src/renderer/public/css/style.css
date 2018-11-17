@@ -34,3 +34,44 @@ body {
 /* Manage users */
 .users-container {
   padding: 2em 0; }
+
+/* Modal */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1;
+  padding-top: 15em;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: black;
+  background-color: rgba(0, 0, 0, 0.5);
+  /* Modal Header */
+  /* Modal Body */
+  /* The Close Button */ }
+  .modal .modal-header {
+    background-color: #fefefe;
+    margin: auto;
+    padding: 1em;
+    border: 1px solid #888;
+    max-width: 80%; }
+    .modal .modal-header h1, .modal .modal-header h2, .modal .modal-header h3, .modal .modal-header h4, .modal .modal-header h5, .modal .modal-header h6 {
+      display: inline; }
+  .modal .modal-body {
+    background-color: #fefefe;
+    margin: auto;
+    padding: 1em;
+    border: 1px solid #888;
+    max-width: 80%; }
+  .modal .close {
+    color: lightgrey;
+    float: right;
+    font-size: 2em;
+    font-weight: bold; }
+  .modal .close:hover,
+  .modal .close:focus {
+    color: #111;
+    text-decoration: none;
+    cursor: pointer; }

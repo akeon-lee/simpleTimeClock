@@ -26,8 +26,9 @@ $colors: (
   green: green,
   purple: purple,
   yellow: yellow,
+  lightGrey: lightgrey,
   darkGrey: #333,
-  nearBlack: #111
+  nearBlack: #111,
 );
 
 @function assortedPercents($p) {
@@ -88,4 +89,56 @@ body {
 /* Manage users */
 .users-container {
   padding: assortedNums(medium) 0;
+}
+
+/* Modal */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1;
+  padding-top: 15em;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgb(0,0,0);
+  background-color: rgba(0,0,0,0.5);
+  
+  /* Modal Header */
+  .modal-header {
+    background-color: #fefefe;
+    margin: auto;
+    padding: 1em;
+    border: 1px solid #888;
+    max-width: 80%;
+
+    h1,h2,h3,h4,h5,h6 {
+      display: inline;
+    }
+  }
+
+  /* Modal Body */
+  .modal-body {
+    background-color: #fefefe;
+    margin: auto;
+    padding: 1em;
+    border: 1px solid #888;
+    max-width: 80%;
+  }
+
+  /* The Close Button */
+  .close {
+    color: colors(lightGrey);
+    float: right;
+    font-size: 2em;
+    font-weight: bold;
+  }
+
+  .close:hover,
+  .close:focus {
+    color: colors(nearBlack);
+    text-decoration: none;
+    cursor: pointer;
+  }
 }

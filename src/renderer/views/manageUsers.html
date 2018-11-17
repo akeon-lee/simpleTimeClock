@@ -41,13 +41,36 @@
           <th>Data</th>
         </tr>
       </thead>
-      <tbody id="list-users">
+      <tbody class="list-users">
         <!-- User data goes here -->
       </tbody>
     </table>
   </div>
 
-  <script>let exports = {}; // This fixes exports not defined bug</script>
+  <!-- User data modal -->
+  <div class="modal userModal">
+    <div class="modal-header">
+      <!-- Title will go here -->
+      <span class="close">&times;</span>
+    </div>
+    <div class="modal-body">
+      <table class="ui celled table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>In Time</th>
+            <th>Out Time</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody class="list-users-data">
+          <!-- User data goes here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script> let exports = {}; // This fixes exports not defined bug </script>
   <script src="../public/js/manageUsers.js"></script>
   <script src="../public/js/main.js"></script>
 </body>
