@@ -40,38 +40,48 @@ body {
   display: none;
   position: fixed;
   z-index: 1;
-  padding-top: 15em;
   left: 0;
   top: 0;
   width: 100%;
   height: 100%;
   overflow: auto;
   background-color: black;
-  background-color: rgba(0, 0, 0, 0.5);
-  /* Modal Header */
-  /* Modal Body */
-  /* The Close Button */ }
-  .modal .modal-header {
-    background-color: #fefefe;
-    margin: auto;
-    padding: 1em;
-    border: 1px solid #888;
-    max-width: 80%; }
-    .modal .modal-header h1, .modal .modal-header h2, .modal .modal-header h3, .modal .modal-header h4, .modal .modal-header h5, .modal .modal-header h6 {
-      display: inline; }
-  .modal .modal-body {
-    background-color: #fefefe;
-    margin: auto;
-    padding: 1em;
-    border: 1px solid #888;
-    max-width: 80%; }
-  .modal .close {
-    color: lightgrey;
-    float: right;
-    font-size: 2em;
-    font-weight: bold; }
-  .modal .close:hover,
-  .modal .close:focus {
-    color: #111;
-    text-decoration: none;
-    cursor: pointer; }
+  background-color: rgba(0, 0, 0, 0.5); }
+  .modal .inner-modal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    /* Modal Header */
+    /* Modal Body */
+    /* The Close Button */ }
+    .modal .inner-modal .modal-header {
+      background-color: #fefefe;
+      margin: auto;
+      padding: 1em;
+      border: 1px solid #888;
+      width: 80%; }
+      .modal .inner-modal .modal-header h1, .modal .inner-modal .modal-header h2, .modal .inner-modal .modal-header h3, .modal .inner-modal .modal-header h4, .modal .inner-modal .modal-header h5, .modal .inner-modal .modal-header h6 {
+        display: inline; }
+    .modal .inner-modal .modal-body {
+      background-color: #fefefe;
+      margin: auto;
+      padding: 1em;
+      border: 1px solid #888;
+      width: 80%; }
+      .modal .inner-modal .modal-body tbody tr td div,
+      .modal .inner-modal .modal-body tbody tr td div input {
+        width: 100%; }
+      .modal .inner-modal .modal-body tbody tr td div input[disabled] {
+        opacity: 0.7 !important; }
+    .modal .inner-modal .close {
+      color: lightgrey;
+      float: right;
+      font-size: 2em;
+      font-weight: bold; }
+    .modal .inner-modal .close:hover,
+    .modal .inner-modal .close:focus {
+      color: #111;
+      text-decoration: none;
+      cursor: pointer; }

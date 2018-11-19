@@ -7,6 +7,7 @@
 </head>
 <body>
   
+  <!-- Manage users container -->
   <div class="users-container ui container">
     <div class="ui huge grey dividing header center aligned">Manage Users</div>
     <div class="spacerTB"></div>
@@ -48,25 +49,32 @@
   </div>
 
   <!-- User data modal -->
-  <div class="modal userModal">
-    <div class="modal-header">
-      <!-- Title will go here -->
-      <span class="close">&times;</span>
-    </div>
-    <div class="modal-body">
-      <table class="ui celled table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>In Time</th>
-            <th>Out Time</th>
-            <th>Notes</th>
-          </tr>
-        </thead>
-        <tbody class="list-users-data">
-          <!-- User data goes here -->
-        </tbody>
-      </table>
+  <div class="modal user-modal">
+    <div class="inner-modal">
+      <div class="modal-header">
+        <!-- Title will go here -->
+        <span class="close">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="ui segment right aligned">
+          <button class="ui blue button" onclick="createTableRow()">Add</button>
+          <button class="ui green button" onclick="saveTable()">Save</button>
+        </div>
+        <table class="ui celled table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>In Time</th>
+              <th>Out Time</th>
+              <th>Notes</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody class="list-users-data">
+            <!-- User data goes here -->
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 

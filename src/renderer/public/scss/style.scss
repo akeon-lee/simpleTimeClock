@@ -96,7 +96,6 @@ body {
   display: none;
   position: fixed;
   z-index: 1;
-  padding-top: 15em;
   left: 0;
   top: 0;
   width: 100%;
@@ -105,40 +104,57 @@ body {
   background-color: rgb(0,0,0);
   background-color: rgba(0,0,0,0.5);
   
-  /* Modal Header */
-  .modal-header {
-    background-color: #fefefe;
-    margin: auto;
-    padding: 1em;
-    border: 1px solid #888;
-    max-width: 80%;
+  .inner-modal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
 
-    h1,h2,h3,h4,h5,h6 {
-      display: inline;
+    /* Modal Header */
+    .modal-header {
+      background-color: #fefefe;
+      margin: auto;
+      padding: 1em;
+      border: 1px solid #888;
+      width: 80%;
+  
+      h1,h2,h3,h4,h5,h6 {
+        display: inline;
+      }
     }
-  }
-
-  /* Modal Body */
-  .modal-body {
-    background-color: #fefefe;
-    margin: auto;
-    padding: 1em;
-    border: 1px solid #888;
-    max-width: 80%;
-  }
-
-  /* The Close Button */
-  .close {
-    color: colors(lightGrey);
-    float: right;
-    font-size: 2em;
-    font-weight: bold;
-  }
-
-  .close:hover,
-  .close:focus {
-    color: colors(nearBlack);
-    text-decoration: none;
-    cursor: pointer;
+  
+    /* Modal Body */
+    .modal-body {
+      background-color: #fefefe;
+      margin: auto;
+      padding: 1em;
+      border: 1px solid #888;
+      width: 80%;
+  
+      tbody tr td div,
+      tbody tr td div input {
+        width: 100%;
+      }
+  
+      tbody tr td div input[disabled] {
+        opacity: 0.7!important;
+      }
+    }
+  
+    /* The Close Button */
+    .close {
+      color: colors(lightGrey);
+      float: right;
+      font-size: 2em;
+      font-weight: bold;
+    }
+  
+    .close:hover,
+    .close:focus {
+      color: colors(nearBlack);
+      text-decoration: none;
+      cursor: pointer;
+    }
   }
 }

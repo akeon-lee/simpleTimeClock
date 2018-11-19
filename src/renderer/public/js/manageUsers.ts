@@ -157,29 +157,44 @@ lib.list = (dir): Promise<object> => {
 
 /**
  * @overview: Start main window section
- * 
  */
 
 // Function to react to form submission when adding a user
 const form: HTMLFormElement = document.querySelector('form');
-/** 
- * @todo: Get The id to equal date + number format 
- * */
-let date = new Date();
-let m: number = date.getMonth() + 1, d: number = date.getDate(), y: number = date.getFullYear(), s: number = date.getSeconds();
-const id: string = m.toString() + checkNum(d).toString() + y.toString().substr(-2) + s.toString();
 
-// Function to add 0 to decimals less than 10
-function checkNum(i): number { if(i < 10) { i = '0' + i; } return i; };
+// Genereate 5 random numbers for id
+function generateRandomNumbers(): number {
+  const numbers: Array<number> = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  let randomNumber: string = '';
 
-form.addEventListener('submit', (e) => {
+  for(let i = 0; i < 5; i++) {
+    const index: number = Math.floor(Math.random() * 10);
+    randomNumber += numbers[index];
+  }
+  return Number(randomNumber);
+}
+
+// When adding a user
+form.addEventListener('submit', async (e) => {
   e.preventDefault();
   // Get the form data
   const formData: FormData = new FormData(form);
 
+  // Generate id from random number
+  let id: number = generateRandomNumbers();
+
+  // Loop through every user, if new id already exists generate random number until it does not
+  const users: { fileNames } = await lib.getFiles('users');
+  for(const user of users.fileNames) {
+    while(user == id) {
+      id = generateRandomNumbers();
+    }
+  }
+
+  // Create the user object
   const userData = <User>{};
   for (const [key, value] of formData.entries()) {
-    userData.id = Number(id);
+    userData.id = id;
     userData[key] = <string>value;
     userData.session = {
       status: false
@@ -188,11 +203,8 @@ form.addEventListener('submit', (e) => {
   }
   
   // Create the user
-  lib.create('users', userData.id, userData)
-    .then((done) => {
-      console.log(done);
-    })
-  .catch(error => console.log(error));
+  const newUser: { success } | { error } = await lib.create('users', userData.id, userData)
+  console.log(newUser);
 });
 
 // Get all users data
@@ -215,7 +227,7 @@ lib.getFiles('users')
               <td data-value="${users.parsedData.level}">
                 ${users.parsedData.level}
               </td>
-              <td data-value="Job">
+              <td class="three wide center aligned" data-value="Job">
                 <button class="ui green tiny button" onclick="getData(this)">Get Data</button>
               </td>
             </tr>
@@ -245,25 +257,56 @@ async function getData(element): Promise<void> {
   const title: string = `<h3 class="insert">${user.firstName} ${user.lastName} - ${user.id}</h3>`;
   header.insertAdjacentHTML('afterbegin', title);
 
-  // Loop through users data
-  for(const session of user.data) {
-    const note = session['notes'].map(notes => notes.note);
-
-    // Insert the users data into the table for the body
+  // If there is user data insert the rows
+  if(user.data.length > 0) {
+    // The row number that relates to the array index from users data
+    let i = 0;
+    // Loop through users data
+    for(const session of user.data) {
+      const note = session['notes'].map(notes => notes.note);
+      const noteTime = session['notes'].map(notes => notes.time);
+      
+      // Insert the users data into the table for the body
+      const content: string = `
+        <tr class="insert" data-value="${i}">
+          <td class="one wide" data-value="${session['inDate']}">
+            <div class="ui transparent input">
+              <input type="text" name="inDate" value="${session['inDate']}" disabled></input>
+            </div>
+          </td>
+          <td class="one wide" data-value="${session['clockIn']}">
+            <div class="ui transparent input">
+              <input type="text" name="clockIn" value="${session['clockIn']}" disabled></input>
+            </div>
+          </td>
+          <td class="one wide" data-value="${session['clockOut']}">
+            <div class="ui transparent input">
+              <input type="text" name="clockOut" value="${session['clockOut']}" disabled></input>
+            </div>
+          </td>
+          <td class="three wide" data-value="notes">
+            <div class="ui transparent input">
+              <input type="text" name="notes" value="${note}" disabled></input>
+            </div>
+          </td>
+          <td class="one wide center aligned">
+            <button class="ui icon tiny blue button" onclick="editTableRow(this, ${user.id})">
+              <i class="edit icon"></i>
+            </button>
+            <button class="ui icon tiny red button" onclick="deleteTableRow(this, ${user.id})">
+              <i class="trash icon"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+      usersDataTable.insertAdjacentHTML('afterbegin', content);
+      i++;
+    }
+  } else {
+    // Insert a row showing that there is no data to display
     const content: string = `
-      <tr class="insert">
-        <td data-value="${session['inDate']}">
-          ${session['inDate']}
-        </td>
-        <td data-value="${session['clockIn']}">
-          ${session['clockIn']}
-        </td>
-        <td data-value="${session['clockOut']}">
-          ${session['clockOut']}
-        </td>
-        <td data-value="${'placeholder'}">
-          ${note}
-        </td>
+      <tr class="insert no-data">
+        <td class="ui medium orange header">There is no data to be displayed for this user.</td>
       </tr>
     `;
     usersDataTable.insertAdjacentHTML('afterbegin', content);
@@ -286,7 +329,7 @@ function cleanUserModal(): void {
 // Function to open the user modal.
 function openUserModal(): void {
   // Get the elements needed to open and close modal
-  const modal: HTMLElement = document.querySelector('.userModal');
+  const modal: HTMLElement = document.querySelector('.user-modal');
   const span: HTMLElement = document.querySelector('.close');
   
   modal.style.display = 'block';
@@ -295,11 +338,114 @@ function openUserModal(): void {
   span.onclick = () => {
     modal.style.display = 'none';
   }
-  
-  // When the user clicks anywhere outside of the modal, close it
-  window.onclick = (event) => {
-    if (event.target == modal) {
-        modal.style.display = 'none';
+}
+
+// Create a new table row
+function createTableRow(): void {
+  const usersDataTable: HTMLElement = document.querySelector('.list-users-data');
+
+  // Remove the no data row if it exists
+  const noDataRow: HTMLElement = document.querySelector('.no-data');
+  if(noDataRow) {
+    noDataRow.remove();
+  };
+
+  // Insert the users data into the table for the body
+  const content: string = `
+    <tr class="insert">
+      <td class="one wide" data-value="">
+        <div class="ui transparent input">
+          <input type="text" value=""></input>
+        </div>
+      </td>
+      <td class="one wide" data-value="">
+        <div class="ui transparent input">
+          <input type="text" value=""></input>
+        </div>
+      </td>
+      <td class="one wide" data-value="">
+        <div class="ui transparent input">
+          <input type="text" value=""></input>
+        </div>
+      </td>
+      <td class="three wide" data-value="notes">
+        <div class="ui transparent input">
+          <input type="text" value=""></input>
+        </div>
+      </td>
+      <td class="one wide center aligned">
+        <button class="ui icon tiny green button" onclick="editTableRow(this)">
+          <i class="check icon"></i>
+        </button>
+        <button class="ui icon tiny red button" onclick="deleteTableRow(this)">
+          <i class="trash icon"></i>
+        </button>
+      </td>
+    </tr>
+  `;
+  usersDataTable.insertAdjacentHTML('afterbegin', content);
+}
+
+/**
+ * Function to edit a table row
+ * 
+ * @param element - The button that was clicked
+ * @param userID - The user id of the row that was clicked
+ */
+async function editTableRow(element, userID): Promise<void> {
+  const row: HTMLElement = element.parentNode.parentNode;
+  const inputs: NodeListOf<HTMLInputElement> = row.querySelectorAll('input');
+  const editIcon: HTMLElement = element.querySelector('i');
+
+  // If edit mode is off
+  if(element.classList.contains('blue')) {
+    // Turn edit mode on
+    editIcon.className = 'check icon';
+    element.classList.add('green');
+    element.classList.remove('blue');
+
+    // Loop through the inputs in the row and enable them
+    for(const input of inputs) {
+      input.disabled = false;
     }
+  } else {
+    // Turn edit mode off and save the data
+    editIcon.className = 'edit icon';
+    element.classList.remove('green');
+    element.classList.add('blue');
+
+    // Create the user object to update the users data
+    const rowID = row.getAttribute('data-value');
+    const user = await lib.read('users', userID);
+    const userObject = user.parsedData;
+
+    // Loop through the inputs in the row and disable them
+    for(const input of inputs) {
+      // Update based on the rowID for index inside the data array
+      userObject.data[rowID][input.name] = input.value;
+      input.disabled = true;
+    }
+    console.log(userObject);
+
+    /**
+     * @todo: Left off here. Still need to save the updated data correctly and fix `notes` section.
+     */
+    // const updateUser = await lib.update('users', userID, userObject);
+    // console.log(updateUser);
   }
+}
+
+// Function to delete a table row
+function deleteTableRow(element): void {
+  const doubleCheck: boolean = confirm('Are you sure you want to delete this row?');
+
+  if(doubleCheck === true) {
+    element.parentNode.parentNode.remove();
+  }
+  return;
+}
+
+// Function to save data to a file
+function saveTable(): void {
+  console.log('saveTable Working');
 }
