@@ -3,6 +3,7 @@ export interface User {
   level: string,
   firstName: string,
   lastName?: string,
+  created: string,
   session: {
     status: boolean
   },
