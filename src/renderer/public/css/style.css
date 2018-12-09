@@ -31,6 +31,16 @@ body {
       font-size: 3rem;
       font-weight: bold; }
 
+/* Date Input */
+input[type='date'] {
+  border-radius: 0.5em;
+  border: 1px #c5c5c5 solid;
+  padding: 0.5em;
+  outline: none; }
+
+input[type='date']:focus {
+  box-shadow: 0 0 1px 1px skyblue; }
+
 /* Manage users */
 .users-container {
   padding: 2em 0; }
@@ -72,9 +82,12 @@ body {
       width: 80%; }
       .modal .inner-modal .modal-body tbody tr td div,
       .modal .inner-modal .modal-body tbody tr td div input {
-        width: 100%; }
+        width: 100%;
+        overflow: auto; }
       .modal .inner-modal .modal-body tbody tr td div input[disabled] {
         opacity: 0.7 !important; }
+      .modal .inner-modal .modal-body .hours {
+        color: blue; }
     .modal .inner-modal .close {
       color: lightgrey;
       float: right;

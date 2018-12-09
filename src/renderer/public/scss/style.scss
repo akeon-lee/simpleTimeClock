@@ -24,6 +24,7 @@ $colors: (
   blue: blue,
   skyblue: skyblue,
   green: green,
+  lightGreen: lightgreen,
   purple: purple,
   yellow: yellow,
   lightGrey: lightgrey,
@@ -86,6 +87,18 @@ body {
   }
 }
 
+/* Date Input */
+input[type='date'] {
+  border-radius: assortedNums(veryLight);
+  border: 1px #c5c5c5 solid;
+  padding: assortedNums(veryLight);
+  outline: none;
+}
+
+input[type='date']:focus {
+  box-shadow: 0 0 1px 1px skyblue;
+}
+
 /* Manage users */
 .users-container {
   padding: assortedNums(medium) 0;
@@ -135,10 +148,15 @@ body {
       tbody tr td div,
       tbody tr td div input {
         width: 100%;
+        overflow: auto;
       }
   
       tbody tr td div input[disabled] {
         opacity: 0.7!important;
+      }
+
+      .hours {
+        color: colors(blue);
       }
     }
   

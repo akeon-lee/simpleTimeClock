@@ -57,8 +57,16 @@
       </div>
       <div class="modal-body">
         <div class="ui segment right aligned">
+          <span style="float:left;">
+            Start Date:
+            <input id="startDate" type="date">
+          </span>
+          <span style="float:left;padding-left:1em;">
+            End Date:
+            <input id="endDate" type="date">
+          </span>
           <button class="ui blue button" onclick="createTableRow()">Add</button>
-          <button class="ui green button" onclick="saveTable()">Save</button>
+          <button class="ui green button" onclick="saveTable(this)">Save</button>
         </div>
         <table class="ui celled table">
           <thead>
@@ -66,6 +74,7 @@
               <th>Date</th>
               <th>In Time</th>
               <th>Out Time</th>
+              <th>Hours</th>
               <th>Notes</th>
               <th>Actions</th>
             </tr>
