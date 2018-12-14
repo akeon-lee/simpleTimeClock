@@ -61,6 +61,20 @@ body {
   padding: 0 assortedNums(veryLight);
 }
 
+.scroller {
+  overflow: auto;
+  max-height: calc(70vh);
+}
+
+.text-center {
+  text-align: center!important;
+}
+
+.notification-container {
+  position: relative;
+  z-index: 99;
+}
+
 /* Main screen */
 .main-container {
   padding: assortedNums(medium) 0;
@@ -174,5 +188,12 @@ input[type='date']:focus {
       text-decoration: none;
       cursor: pointer;
     }
+  }
+}
+
+/* Admin Confirm Modal */
+.admin-confirm {
+  .inner-modal {
+    width: 50%;
   }
 }

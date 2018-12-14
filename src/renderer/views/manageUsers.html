@@ -7,11 +7,15 @@
 </head>
 <body>
   
+  <!-- Container for notification box -->
+  <div class="notification-container"></div>
+
   <!-- Manage users container -->
-  <div class="users-container ui container">
-    <div class="ui huge grey dividing header center aligned">Manage Users</div>
-    <div class="spacerTB"></div>
-    <form class="ui form">
+  <div class="users-container ui container">    
+    <div class="ui huge grey header center aligned">Manage Users</div>
+    <div class="ui divider"></div>
+
+    <form class="ui form" onsubmit="event.preventDefault(); addUser(this);">
       <div class="two fields">
         <div class="field">
           <input type="text" name="firstName" placeholder="First Name">
@@ -31,8 +35,8 @@
       <button class="ui huge green button" type="submit">Add</button>
     </form>
 
-    <div class="ui huge grey dividing header center aligned">View/Edit Users</div>
-    <div class="spacerTB"></div>
+    <div class="ui huge grey header center aligned">View/Edit Users</div>
+    <div class="ui divider"></div>
     <table class="ui celled table">
       <thead>
         <tr>
@@ -40,6 +44,7 @@
           <th>Name</th>
           <th>Level</th>
           <th>Data</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody class="list-users">
@@ -55,7 +60,7 @@
         <!-- Title will go here -->
         <span class="close">&times;</span>
       </div>
-      <div class="modal-body">
+      <div class="modal-body scroller">
         <div class="ui segment right aligned">
           <span style="float:left;">
             Start Date:
@@ -66,7 +71,7 @@
             <input id="endDate" type="date">
           </span>
           <button class="ui blue button" onclick="createTableRow()">Add</button>
-          <button class="ui green button" onclick="saveTable(this)">Save</button>
+          <button class="ui green button" onclick="exportToExcel(this)">Save</button>
         </div>
         <table class="ui celled table">
           <thead>
@@ -83,6 +88,27 @@
             <!-- User data goes here -->
           </tbody>
         </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- The modal to confirm admin before editing data -->
+  <div class="modal admin-confirm">
+    <div class="inner-modal">
+      <div class="modal-header">
+        <h3>Confirm Admin</h3>
+        <span class="close">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form class="ui form admin-confirm-form" onsubmit="event.preventDefault(); confirmAdminStatus(this);">
+          <div class="field">
+            <label>Enter an admin ID to proceed</label>
+            <div class="ui fluid input focus">
+              <input type="text" class="admin-id" name="admin-id" placeholder="Input ID...">
+            </div>
+          </div>
+          <button class="ui primary button">Submit</button>
+        </form>
       </div>
     </div>
   </div>

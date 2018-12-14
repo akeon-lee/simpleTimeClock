@@ -5,7 +5,6 @@
  * @todo:
  *  1) Importing and exporting cutom modules not working. Try to find a fix so we can have the library in it's own file.
  *  2) Time calculation does not work if a user clockin and clockout are on different days
- *  3) Date picker does not work if the year is different
  *  4) We need to make it so time, date and notes format can only be formatted the way it is stored.
  *  5) When adding a new row for user's data only one input shows inside notes, also adding new row does not save
  *  6) If a user edits a row from user's data and it has no notes only one input shows inside notes
@@ -172,7 +171,7 @@ lib.list = (dir): Promise<object> => {
  *  `fileName`   - The name of the file that is to be created
  * 
  */
-lib.createExcelFile = (executor: string, rows: Array<object>, totalHours: string, fileName: string) => {
+lib.createExcelFile = async (executor: string, rows: Array<object>, totalHours: string, fileName: string) => {
   // A new excel workbook
   const workbook = new Excel.Workbook();
   // Some information about the excel workbook
@@ -186,9 +185,10 @@ lib.createExcelFile = (executor: string, rows: Array<object>, totalHours: string
   const sheet = workbook.addWorksheet('Timeclock');
   // Table headers
   sheet.columns = [
-    { header: 'Date', key: 'date' },
-    { header: 'clockIn', key: 'clockIn' },
-    { header: 'clockOut', key: 'clockOut' },
+    { header: 'In Date', key: 'inDate' },
+    { header: 'Out Date', key: 'outDate' },
+    { header: 'Clock In', key: 'clockIn' },
+    { header: 'Clock Out', key: 'clockOut' },
     { header: 'Hours', key: 'hours' },
     { header: 'Notes', key: 'notes' },
     { header: 'Total Hours', key: 'totalHours' },
@@ -196,24 +196,113 @@ lib.createExcelFile = (executor: string, rows: Array<object>, totalHours: string
 
   // Add rows in the above header
   for(const row of rows) {
-    sheet.addRow({ date: row['inDate'], clockIn: row['clockIn'], clockOut: row['clockOut'], hours: row['hours'], notes: row['notes'] });
+    sheet.addRow({ 
+      inDate: row['inDate'], 
+      outDate: row['outDate'], 
+      clockIn: row['clockIn'], 
+      clockOut: row['clockOut'], 
+      hours: row['hours'], 
+      notes: row['notes'] 
+    });
   }
-  sheet.addRow({totalHours: totalHours});
+  sheet.addRow({
+    totalHours: totalHours
+  });
+
+  // Grab each column from the excel file to make custom modifications
+  const inDateCol = sheet.getColumn('inDate');
+  const outDateCol = sheet.getColumn('outDate');
+  const clockInCol = sheet.getColumn('clockIn');
+  const clockOutCol = sheet.getColumn('clockOut');
+  const hoursCol = sheet.getColumn('hours');
+  const notesCol = sheet.getColumn('notes');
+  const totalHoursCol = sheet.getColumn('totalHours');
+
+  // Make notes column collapsable
+  notesCol.outlineLevel = 1;
+
+  // Set the width of specified columns
+  inDateCol.width = 15;
+  outDateCol.width = 15;
+  hoursCol.width = 10;
+  totalHoursCol.width = 20;
+  clockInCol.width = 20;
+  clockOutCol.width = 20;
+
+  // Read and get data from settings.json then prepend the file path to writeFile
+  const saveDataPath = await lib.read('', 'settings');
+  const path = saveDataPath.parsedData;
 
   // Save Excel on Hard Disk
-  workbook.xlsx.writeFile(`${fileName}.xlsx`)
+  workbook.xlsx.writeFile(`${path.saveDataPath}/${fileName}.xlsx`)
     .then(() => {
-      console.log('The file has been saved');
+      console.log(`${fileName}.xlsx has been saved to ${path.saveDataPath}`);
     })
   .catch(error => console.error({ error }));
 }
 
 /**
+ * Function to display notifications
+ * 
+ * @param data - The data such as type (success, info, warning or error), header and message being passed in as an object
+ * 
+ * @todo - Currently there seems to be no use for this display notification in manage users area.
+ * 
+ */
+function displayNotifications(data) {
+  const notificationBox = document.querySelector('.notification-container');
+  interface Notification {
+    class: string,
+    header: string,
+    message: string
+  }
+  const notify = <Notification>{};
+
+  let notifyClass;
+  if(data.type === 'error') {
+    notifyClass = 'negative';
+  } else if(data.type === 'success') {
+    notifyClass = 'success';
+  }
+
+  // Contruct the notification box depending on the type passed in
+  const notificationElement = `
+    <div class="ui ${notifyClass} message">
+      <i class="close icon"></i>
+      <div class="header">
+        ${data.header}
+      </div>
+      <p>
+        ${data.message}
+      </p>
+    </div>
+    <div class="ui divider"></div>
+  `;
+  
+  // Insert notification element into html each time it is called
+  notificationBox.innerHTML = notificationElement;
+
+  // Remove notification when x (close) is pressed
+  notificationBox.querySelector('.close').addEventListener('click', () => {
+    notificationBox.querySelector('.message').remove();
+    notificationBox.querySelector('.divider').remove();
+  });
+
+  // Remove notifiaction on double click
+  document.addEventListener('dblclick', () => {
+    notificationBox.querySelector('.message').remove();
+    notificationBox.querySelector('.divider').remove();
+  });
+}
+
+/**
+ * Manage Users Window
  * @overview: Start main window section
+ * 
  */
 
-// Function to react to form submission when adding a user
-const form: HTMLFormElement = document.querySelector('form');
+// Global admin control variable
+let adminControl: boolean = false;
 
 // Genereate 5 random numbers for id
 function generateRandomNumbers(): number {
@@ -227,9 +316,60 @@ function generateRandomNumbers(): number {
   return Number(randomNumber);
 }
 
-// When adding a user
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
+// Function to confirm an admin before performing an action
+async function confirmAdminStatus(form): Promise<void> {
+  const container: HTMLElement = form.parentElement.parentElement.parentElement;
+  const input: HTMLInputElement = form.querySelector('.admin-id');
+  const id: string | number = input.value;
+
+  try {
+    // Get the user object
+    const user = await lib.read('users', id);
+    const parsed = user.parsedData;
+  
+    // If the user entered is an admin proceed
+    if(parsed.level === 'admin') {
+      // Notification box for success
+      const notifyData = {
+        type: 'success',
+        header: 'Admin Access', 
+        message: 'Admin privilages has been granted'
+      };
+      displayNotifications(notifyData);
+  
+      container.style.display = 'none';
+      // Set the global admin variable to true
+      adminControl = true;
+    } else {
+      // Notification box for error
+      const notifyData = {
+        type: 'error',
+        header: 'Admin Access', 
+        message: 'Admin privilages has been denied'
+      };
+      displayNotifications(notifyData);
+  
+      console.error('An invalid admin ID has been entered');
+    }
+  } catch(e) {
+    // Notification box for error when there is no input or a user id that does not exist
+    const notifyData = {
+      type: 'error',
+      header: 'Admin Access', 
+      message: e.error
+    };
+    displayNotifications(notifyData);
+  }
+}
+
+// Function to add a new employee or admin
+async function addUser(form): Promise<void> {
+  if(!adminControl) {
+    // Open the admin-confirm modal to set adminAccess to true
+    openUserModal('.admin-confirm');
+    return;
+  }
+
   // Get the form data
   const formData: FormData = new FormData(form);
 
@@ -256,41 +396,82 @@ form.addEventListener('submit', async (e) => {
   }
   
   // Create the user
-  const newUser: { success } | { error } = await lib.create('users', userData.id, userData)
-  console.log(newUser);
-});
+  const newUser: { success } | { error } = await lib.create('users', userData.id, userData);
+  // Clear the user data table in main window
+  const userRowTable = document.querySelector('.list-users');
+  userRowTable.innerHTML = '';
+
+  // Reload the user data
+  loadUserData();
+}
+
+// Function to edit a user
+function editUser() {
+  if(!adminControl) {
+    // Open the admin-confirm modal to set adminAccess to true
+    openUserModal('.admin-confirm');
+    return;
+  }
+}
+
+// Function to delete a user
+function deleteUser(element: HTMLElement): void {
+  if(!adminControl) {
+    // Open the admin-confirm modal to set adminAccess to true
+    openUserModal('.admin-confirm');
+    return;
+  }
+  // Select the rows first td cell to get the user id
+  const row: HTMLElement = element.parentElement.parentElement;
+  const id: string = row.querySelector('td').getAttribute('data-value');
+  const doubleCheck: boolean = confirm('Are you sure you want to delete this user?');
+
+  if(doubleCheck) {
+    // Delete the user
+    row.remove();
+    lib.delete('users', id);
+  }
+}
 
 // Get all users data
-lib.getFiles('users')
-  .then(files => {
-    const usersTable: HTMLElement = document.querySelector('.list-users');
-    // Loop through each file and read the data
-    for(const file of files.fileNames) {
-      lib.read('users', file)
-        .then(users => {
-          // Create the elements and push them into the array
-          const tableRow: string = `
-            <tr>
-              <td data-value="${users.parsedData.id}">
-                ${users.parsedData.id}
-              </td>
-              <td data-value="${users.parsedData.firstName} ${users.parsedData.lastName}">
-                ${users.parsedData.firstName} ${users.parsedData.lastName}
-              </td>
-              <td data-value="${users.parsedData.level}">
-                ${users.parsedData.level}
-              </td>
-              <td class="three wide center aligned" data-value="Job">
-                <button class="ui green tiny button" onclick="getData(this)">Get Data</button>
-              </td>
-            </tr>
-          `;
-          usersTable.insertAdjacentHTML('afterbegin', tableRow);
-        })
-      .catch(error => console.error(error));
-    }
-  })
-.catch(error => console.error({ error }));
+async function loadUserData() {
+  const usersTable: HTMLElement = document.querySelector('.list-users');
+  const files = await lib.getFiles('users');
+
+  // Loop through each file and read the data
+  for(const file of files.fileNames) {
+    const users = await lib.read('users', file);
+
+    // Create the elements and push them into the array
+    const tableRow: string = `
+      <tr class="user-row">
+        <td data-value="${users.parsedData.id}">
+          ${users.parsedData.id}
+        </td>
+        <td data-value="${users.parsedData.firstName} ${users.parsedData.lastName}">
+          ${users.parsedData.firstName} ${users.parsedData.lastName}
+        </td>
+        <td data-value="${users.parsedData.level}">
+          ${users.parsedData.level}
+        </td>
+        <td class="three wide center aligned">
+          <button class="ui green tiny button" onclick="getData(this)">Get Data</button>
+        </td>
+        <td class="two wide center aligned">
+          <button class="ui icon tiny blue button" onclick="editUser(this)">
+            <i class="edit icon"></i>
+          </button>
+          <button class="ui icon tiny red button" onclick="deleteUser(this)">
+            <i class="trash icon"></i>
+          </button>
+        </td>
+      </tr>
+    `;
+    usersTable.insertAdjacentHTML('afterbegin', tableRow);
+  }
+}
+// Invoke this function to load all users data when the manage users window is opened
+loadUserData();
 
 // Function to get the specified users data from list button
 async function getData(element): Promise<void> {
@@ -321,10 +502,10 @@ async function getData(element): Promise<void> {
     // Loop through users data
     for(const session of user.data) {
       // Get `inDate`, `clockIn`, `clockOut`, `notes` for `session`
-      const { inDate, clockIn, clockOut, notes }: any = session;
+      const { inDate, outDate, clockIn, clockOut, notes }: any = session;
       
       // Get the total hours worked for a specific session
-      const hours: string = getTimeForSession(clockIn, clockOut);
+      const hours: string = getTimeForSession(inDate, clockIn, outDate, clockOut);
       collectTime.push(hours);
 
       // Map the notes object based on it's time and note
@@ -340,9 +521,12 @@ async function getData(element): Promise<void> {
       // Insert the users data into the table for the body
       const content: string = `
         <tr class="insert" data-value="${i}">
-          <td class="one wide" data-value="${inDate}">
+          <td class="one wide">
             <div class="ui transparent input">
               <input type="text" name="inDate" value="${inDate}" disabled>
+            </div>
+            <div class="ui transparent input">
+              <input type="text" name="outDate" value="${outDate}" disabled>
             </div>
           </td>
           <td class="one wide" data-value="${clockIn}">
@@ -411,7 +595,7 @@ async function getData(element): Promise<void> {
   }
 
   // Open the modal with users data
-  openUserModal();
+  openUserModal('.user-modal');
 }
 
 // Get the data with a date range.
@@ -422,11 +606,6 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
   const usersDataTable: HTMLElement = document.querySelector('.list-users-data');
   const data: { parsedData } = await lib.read('users', id);
   const user: User = data.parsedData;
-
-  // If there is no end date provided
-  if(!endDate) {
-    endDate = '9999999';
-  }
 
   // Clean the user modal
   cleanUserModal();
@@ -445,16 +624,20 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
     // Loop through users data
     for(const session of user.data) {
       // Get `inDate`, `clockIn`, `clockOut`, `notes` for `session`
-      const { inDate, clockIn, clockOut, notes }: any = session;
+      const { inDate, outDate, clockIn, clockOut, notes }: any = session;
 
-      // If the date from user data is greater than or equal to the selected input date
-      if(session['inDate'] >= formatDate(startDate) && session['inDate'] <= formatDate(endDate)) {
+      // Turn the dates into a JavaScript date and get the time to compare and filter the data
+      const formattedStartDate = new Date(formatDate(startDate)).getTime();
+      const formattedEndDate = new Date (formatDate(endDate)).getTime() || new Date().getTime();
+      const formattedUserDate = new Date(inDate).getTime();
+
+      if(formattedUserDate >= formattedStartDate && formattedUserDate <= formattedEndDate) {
         // Get the total hours worked for a specific session
-        const hours: string = getTimeForSession(clockIn, clockOut);
+        const hours: string = getTimeForSession(inDate, clockIn, outDate, clockOut);
         collectTime.push(hours);
 
         // Map the notes object based on it's time and note
-        const note: string = session['notes'].map(notes => {
+        const note: string = notes.map(notes => {
           return `
             <span class="ui transparent input">
               <input type="text" id="time" name="notes" value="${notes.time}" disabled>
@@ -466,9 +649,12 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
         // Insert the users data into the table for the body
         const content: string = `
           <tr class="insert" data-value="${i}">
-            <td class="one wide" data-value="${inDate}">
+            <td class="one wide">
               <div class="ui transparent input">
                 <input type="text" name="inDate" value="${inDate}" disabled>
+              </div>
+              <div class="ui transparent input">
+                <input type="text" name="outDate" value="${outDate}" disabled>
               </div>
             </td>
             <td class="one wide" data-value="${clockIn}">
@@ -522,7 +708,7 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
     
     const totalWorkTimeElement: string = `
       <div class="ui visible message insert">
-        <p>Total Hours Worked: <span id="totalHours" class="hours"><b>${totalWorkTime}</b></span></p>
+        <p>Total Hours Worked: <span id="totalHours" class="hours" data-value="${totalWorkTime}"><b>${totalWorkTime}</b></span></p>
       </div>
     `;
     modalBody.insertAdjacentHTML('afterbegin', totalWorkTimeElement);
@@ -531,12 +717,12 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
 
 // Function to format the date from input date
 function formatDate(date): string {
-  const newDate: string = date[5] + date[6] + date[8] + date[9] + date[2] + date[3];
+  const newDate: string = date[5] + date[6] + '-' + date[8] + date[9] + '-' + date[0] + date[1] + date[2] + date[3];
   return newDate;
 }
 
 // Function to calculate the total time for a specific session
-function getTimeForSession(inTime: string, outTime: string): string {
+function getTimeForSession(inDate: string, inTime: string, outDate: string, outTime: string): string {
   // Regex for am and pm
   const pm: RegExp = /\spm/;
   const am: RegExp = /\sam/;
@@ -562,21 +748,54 @@ function getTimeForSession(inTime: string, outTime: string): string {
     return time;
   }
 
+  // Function to format date and hours into JS readable object
+  function convertToJSTime(date: string, time: Array<string>): Date {
+    // Split the date into an array
+    const formatDate = date.split('-');
+
+    // Convert to JS readable date
+    const jsTime = new Date(
+      parseInt(formatDate[2]), 
+      parseInt(formatDate[0]) - 1,
+      parseInt(formatDate[1]), 
+      parseInt(time[0]), 
+      parseInt(time[1]), 
+      parseInt(time[2])
+    );
+    return jsTime;
+  }
+
+  /**
+   * @todo - left off here. We need to convert the milliseconds into hours:minutes:seconds
+   */
+
   // If the time in pm
   if(pm.test(inTime)) {
+    const milisecondTime = convertToJSTime(inDate, prepareTimes(inTime, pm));
+    console.log(milisecondTime);
+
     splitInTime = prepareTimes(inTime, pm);
   };
 
   if(pm.test(outTime)) {
+    const milisecondTime = convertToJSTime(outDate, prepareTimes(outTime, pm));
+    console.log(milisecondTime);
+
     splitOutTime = prepareTimes(outTime, pm);
   }
   
   // If the time in am
   if(am.test(inTime)) {
+    const milisecondTime = convertToJSTime(inDate, prepareTimes(inTime, am));
+    console.log(milisecondTime);
+
     splitInTime = prepareTimes(inTime, am);
   }
 
   if(am.test(outTime)) {
+    const milisecondTime = convertToJSTime(outDate, prepareTimes(outTime, am));
+    console.log(milisecondTime);
+
     splitOutTime = prepareTimes(outTime, am);
   }
 
@@ -608,14 +827,22 @@ function getTimeForSession(inTime: string, outTime: string): string {
     // Add out minutes
     let getMinutes: string | number = parseInt(splitOutTime[1]) + roundInTime;
 
+    // If the hours or minutes is NaN default to 0
+    if(isNaN(getHours)) {
+      getHours = 0;
+    }
+
+    if(isNaN(getMinutes)) {
+      getMinutes = 0;
+    }
+
     // If the minutes is larger than 60 then add 1 to hour and subract 60 from minutes
     if(getMinutes >= 60) {
       getHours += 1;
       getMinutes -= 60;
     }
 
-    // Format the total time by hrs and minutes
-    // If getHours is less than 10 we prepend a 0, same logic with minutes
+    // Format the total time by hrs and minutes. If getHours is less than 10 we prepend a 0, same logic with minutes
     if(getHours < 10) {
       getHours = '0' + getHours.toString();
     }
@@ -650,15 +877,15 @@ function cleanUserModal(date: boolean = false): void {
 }
 
 // Function to open the user modal.
-function openUserModal(): void {
+function openUserModal(modalClass: string): void {
   // Get the elements needed to open and close modal
-  const modal: HTMLElement = document.querySelector('.user-modal');
-  const span: HTMLElement = document.querySelector('.close');
+  const modal: HTMLElement = document.querySelector(modalClass);
+  const close: HTMLElement = modal.querySelector('.close');
   
   modal.style.display = 'block';
   
   // When the user clicks on <span> (x), close the modal
-  span.onclick = () => {
+  close.onclick = () => {
     modal.style.display = 'none';
   }
 }
@@ -731,6 +958,13 @@ endDate.addEventListener('change', () => {
  * @param userID - The user id of the row that was clicked
  */
 async function editTableRow(element, userID): Promise<void> {
+  // If adminControl is set to false
+  if(!adminControl) {
+    // Open the admin-confirm modal to set adminAccess to true
+    openUserModal('.admin-confirm');
+    return;
+  }
+  
   const row: HTMLElement = element.parentNode.parentNode;
   const inputs: NodeListOf<HTMLInputElement> = row.querySelectorAll('input');
   const editIcon: HTMLElement = element.querySelector('i');
@@ -805,14 +1039,14 @@ async function editTableRow(element, userID): Promise<void> {
 function deleteTableRow(element): void {
   const doubleCheck: boolean = confirm('Are you sure you want to delete this row?');
 
-  if(doubleCheck === true) {
+  if(doubleCheck) {
     element.parentNode.parentNode.remove();
   }
   return;
 }
 
 // Function to save data to a file
-function saveTable(element: HTMLElement): void {
+function exportToExcel(element: HTMLElement): void {
   // Gather all the neccessary elements and data
   const userDataModal: HTMLElement = element.parentElement.parentElement.parentElement;
   let fileName = <any>userDataModal.querySelector('.user-header');
@@ -824,6 +1058,7 @@ function saveTable(element: HTMLElement): void {
   const formatUserDataForExcel: Array<object> = [];
   let session: any = {
     inDate: '',
+    outDate: '',
     clockIn: '',
     clockOut: '',
     hours: '',
@@ -836,14 +1071,16 @@ function saveTable(element: HTMLElement): void {
     for(const input of inputs) {
       if(input.name === 'inDate') {
         session.inDate = input.value;
+      } else if(input.name === 'outDate') {
+        session.outDate = input.value;
       } else if(input.name === 'clockIn') {
         session.clockIn = input.value;
       } else if(input.name === 'clockOut') {
         session.clockOut = input.value;
       }
 
-      // If the sessions object date, clockIn and clockOut has been filled move onto the next step
-      if(session.inDate !== '' && session.clockIn !== '' && session.clockOut !== '') {
+      // If the sessions object dates, clockIn and clockOut has been filled move onto the next step
+      if(session.inDate !== '' && session.outDate !== '' && session.clockIn !== '' && session.clockOut !== '') {
         // Set session hours and notes
         session.hours = row.querySelector('.hours').getAttribute('data-value');
         const notes: NodeListOf<HTMLInputElement> = row.querySelector('.notes').querySelectorAll('input');
@@ -866,6 +1103,7 @@ function saveTable(element: HTMLElement): void {
         formatUserDataForExcel.push(session);
         session = {
           inDate: '',
+          outDate: '',
           clockIn: '',
           clockOut: '',
           hours: '',
@@ -876,5 +1114,23 @@ function saveTable(element: HTMLElement): void {
   }
 
   // Execute createExcelFile() with the gathered parameters
-  lib.createExcelFile('admin', formatUserDataForExcel, totalHours, fileName);
+  lib.createExcelFile('admin', formatUserDataForExcel, totalHours, fileName)
+    .then(() => {
+      // Notification box for success
+      const notifyData = {
+        type: 'success',
+        header: 'Export Successful', 
+        message: 'The users data has been exported successfully'
+      };
+      displayNotifications(notifyData);
+    })
+  .catch(error => {
+      // Notification box for errors
+      const notifyData = {
+        type: 'error',
+        header: 'Export Failure', 
+        message: error.error
+      };
+      displayNotifications(notifyData);
+  });
 }
