@@ -4,10 +4,6 @@
  * 
  * @todo:
  *  1) Importing and exporting cutom modules not working. Try to find a fix so we can have the library in it's own file.
- *  2) When adding a new row the format checker does not work
- *  3) Weird bug where when you add a new data row in user and delete it, it will delete multiple rows (This has to do with the array index)
- *  4) When you mark edit as complete with another edit open, it also removes the add notes button for the still in edit mode row
- * 
  */
 
 // Dependencies
@@ -15,6 +11,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { User } from '../../models/user';
 import * as Excel from 'exceljs';
+import * as Cleave from 'cleave.js';
 
 type Data = {
   baseDir: string,
@@ -519,7 +516,11 @@ async function getData(element): Promise<void> {
       const note: string = session['notes'].map((notes, index) => {
         return `
           <span class="ui transparent input">
-            <input type="text" id="time" name="notes" onchange="restrictInputFormat(this, 'time')" data-value="${index}" value="${notes.time}" disabled>
+            <input type="text" id="time" name="notes" onfocus="restrictInputFormat(this, 'time')" data-value="${index}" value="${notes.time}" disabled>
+            <select class="ui dropdown button display-none ampm" style="display:none;">
+              <option class="item">am</option>
+              <option class="item">pm</option>
+            </select>
             <input type="text" id="note" name="notes" value="${notes.note}" disabled>
             <span class="display-none"><button class="ui icon mini basic button" onclick="removeNotes(this)"><i class="minus red icon"></i></button></span>
           </span>
@@ -535,21 +536,29 @@ async function getData(element): Promise<void> {
         <tr class="insert" data-value="${rowIndex}">
           <td class="one wide">
             <div class="ui transparent input">
-              <input type="text" name="inDate" onchange="restrictInputFormat(this, 'date')" value="${inDate}" disabled>
+              <input type="text" name="inDate" onfocus="restrictInputFormat(this, 'date')" value="${inDate}" disabled>
             </div>
             <div class="ui transparent input">
-              <input type="text" name="outDate" onchange="restrictInputFormat(this, 'date')" value="${outDate}" disabled>
+              <input type="text" name="outDate" onfocus="restrictInputFormat(this, 'date')" value="${outDate}" disabled>
             </div>
           </td>
           <td class="one wide" data-value="${clockIn}">
             <div class="ui transparent input">
-              <input type="text" name="clockIn" onchange="restrictInputFormat(this, 'time')" value="${clockIn}" disabled>
+              <input type="text" name="clockIn" onfocus="restrictInputFormat(this, 'time')" value="${clockIn}" disabled>
             </div>
+            <select class="ui dropdown button display-none ampm" style="display:none;">
+              <option class="item">am</option>
+              <option class="item">pm</option>
+            </select>
           </td>
           <td class="one wide" data-value="${clockOut}">
             <div class="ui transparent input">
-              <input type="text" name="clockOut" onchange="restrictInputFormat(this, 'time')" value="${clockOut}" disabled>
+              <input type="text" name="clockOut" onfocus="restrictInputFormat(this, 'time')" value="${clockOut}" disabled>
             </div>
+            <select class="ui dropdown button display-none ampm" style="display:none;">
+              <option class="item">am</option>
+              <option class="item">pm</option>
+            </select>
           </td>
           <td class="one wide">
             <span class="hours" data-value="${hours}">${hours}</span>
@@ -561,7 +570,7 @@ async function getData(element): Promise<void> {
             <button class="ui icon mini basic button display-none" onclick="addNotes(this)" style="display:none;"><i class="plus green icon"></i></button>
           </td>
           <td class="one wide center aligned">
-            <button class="ui icon tiny blue button" onclick="editTableRow(this, ${user.id})">
+            <button class="ui icon tiny blue button" onclick="editTableRow(this, ${user.id}, true)">
               <i class="edit icon"></i>
             </button>
             <button class="ui icon tiny red button" onclick="deleteTableRow(this, ${user.id})">
@@ -652,7 +661,11 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
         const note: string = notes.map((notes, index) => {
           return `
             <span class="ui transparent input">
-              <input type="text" id="time" name="notes" onchange="restrictInputFormat(this, 'time')" data-value="${index}" value="${notes.time}" disabled>
+              <input type="text" id="time" name="notes" onfocus="restrictInputFormat(this, 'time')" data-value="${index}" value="${notes.time}" disabled>
+              <select class="ui dropdown button display-none ampm" style="display:none;">
+                <option class="item">am</option>
+                <option class="item">pm</option>
+              </select>
               <input type="text" id="note" name="notes" value="${notes.note}" disabled>
               <span class="display-none"><button class="ui icon mini basic button" onclick="removeNotes(this)"><i class="minus red icon"></i></button></span>
             </span>
@@ -668,21 +681,29 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
           <tr class="insert" data-value="${rowIndex}">
             <td class="one wide">
               <div class="ui transparent input">
-                <input type="text" name="inDate" onchange="restrictInputFormat(this, 'date')" value="${inDate}" disabled>
+                <input type="text" name="inDate" onfocus="restrictInputFormat(this, 'date')" value="${inDate}" disabled>
               </div>
               <div class="ui transparent input">
-                <input type="text" name="outDate" onchange="restrictInputFormat(this, 'date')" value="${outDate}" disabled>
+                <input type="text" name="outDate" onfocus="restrictInputFormat(this, 'date')" value="${outDate}" disabled>
               </div>
             </td>
             <td class="one wide" data-value="${clockIn}">
               <div class="ui transparent input">
-                <input type="text" name="clockIn" onchange="restrictInputFormat(this, 'time')" value="${clockIn}" disabled>
+                <input type="text" name="clockIn" onfocus="restrictInputFormat(this, 'time')" value="${clockIn}" disabled>
               </div>
+              <select class="ui dropdown button display-none ampm" style="display:none;">
+                <option class="item">am</option>
+                <option class="item">pm</option>
+              </select>
             </td>
             <td class="one wide" data-value="${clockOut}">
               <div class="ui transparent input">
-                <input type="text" name="clockOut" onchange="restrictInputFormat(this, 'time')" value="${clockOut}" disabled>
+                <input type="text" name="clockOut" onfocus="restrictInputFormat(this, 'time')" value="${clockOut}" disabled>
               </div>
+              <select class="ui dropdown button display-none ampm" style="display:none;">
+                <option class="item">am</option>
+                <option class="item">pm</option>
+              </select>
             </td>
             <td class="one wide">
               <span class="hours" data-value="${hours}">${hours}</span>
@@ -694,7 +715,7 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
               <button class="ui icon mini basic button display-none" onclick="addNotes(this)" style="display:none;"><i class="plus green icon"></i></button>
             </td>
             <td class="one wide center aligned">
-              <button class="ui icon tiny blue button" onclick="editTableRow(this, ${user.id})">
+              <button class="ui icon tiny blue button" onclick="editTableRow(this, ${user.id}, true)">
                 <i class="edit icon"></i>
               </button>
               <button class="ui icon tiny red button" onclick="deleteTableRow(this, ${user.id})">
@@ -734,50 +755,20 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
   }
 }
 
-async function restrictInputFormat(element: HTMLInputElement, type: string): Promise<void> {
-  // Get current users saved data
-  const modal = element.parentElement.parentElement.parentElement.parentElement.parentElement.parentElement.parentElement;
-  const sessionIndex = element.parentElement.parentElement.parentElement.getAttribute('data-value');
-  const userID = modal.querySelector('.modal-header').querySelector('h3').getAttribute('data-value');
-  const persistedData = await lib.read('users', userID);
-  const userSession = persistedData.parsedData.data[sessionIndex];
-
+function restrictInputFormat(element: HTMLInputElement, type: string): void {
   if(type === 'date') {
-    // Regexp for how the date should always be formatted
-    const dateFormat = /^(\w{2})-(\w{2})-(\w{4})$/;
-    const testFormat = dateFormat.test(element.value);
-
-    if(!testFormat) {
-      element.value = userSession[element.name];
-      // Notification box for success
-      const notifyData = {
-        type: 'error',
-        header: 'Format Error', 
-        message: 'Please make sure to format the date correctly (mm-dd-yyyy)'
-      };
-      displayNotifications(notifyData);
-    }
+    // Use the cleave library to restrict the date format
+    const dateCleave = new Cleave(element, {
+      delimiter: '-',
+      date: true,
+      datePattern: ['m', 'd', 'Y']
+    });
   } else if(type === 'time') {
-    // Regexp for how the time should always be formatted
-    const timeFormat = /^(\w{1,2}):(\w{2}):(\w{2})\s\w{2}$/;
-    const testFormat = timeFormat.test(element.value);
-
-    if(!testFormat) {
-      // If the input is notes we need to get the index of the notes array
-      if(element.name === 'notes') {
-        const noteIndex = element.getAttribute('data-value');
-        element.value = userSession[element.name][noteIndex].time;
-      } else {
-        element.value = userSession[element.name];
-      }
-      // Notification box for success
-      const notifyData = {
-        type: 'error',
-        header: 'Format Error', 
-        message: 'Please make sure to format the time correctly (hh:mm:ss am)'
-      };
-      displayNotifications(notifyData);
-    }
+    // Use the cleave library to restrict the time format
+    const timeCleave = new Cleave(element, {
+      time: true,
+      timePattern: ['h', 'm', 's']
+    });
   }
 }
 
@@ -910,6 +901,13 @@ function openUserModal(modalClass: string): void {
 
 // Create a new table row
 function createTableRow(element): void {
+  // If adminControl is set to false
+  if(!adminControl) {
+    // Open the admin-confirm modal to set adminAccess to true
+    openUserModal('.admin-confirm');
+    return;
+  }
+
   const usersDataTable: HTMLElement = document.querySelector('.list-users-data');
   const userID = element.parentElement.parentElement.parentElement.querySelector('.modal-header').querySelector('h3').getAttribute('data-value');
 
@@ -928,42 +926,46 @@ function createTableRow(element): void {
     cell.style.display = 'table-cell';
   }
 
+  let lastRowIndex = usersDataTable.querySelectorAll('tr').length;
+
   // Insert the users data into the table for the body
   const content: string = `
-    <tr class="insert">
+    <tr class="insert" data-value="${lastRowIndex++}">
       <td class="one wide">
         <div class="ui transparent input">
-          <input type="text" name="inDate" onchange="restrictInputFormat(this, 'date')">
+          <input type="text" name="inDate" onfocus="restrictInputFormat(this, 'date')">
         </div>
         <div class="ui transparent input">
-          <input type="text" name="outDate" onchange="restrictInputFormat(this, 'date')">
+          <input type="text" name="outDate" onfocus="restrictInputFormat(this, 'date')">
         </div>
       </td>
       <td class="one wide">
         <div class="ui transparent input">
-          <input type="text" name="clockIn" onchange="restrictInputFormat(this, 'time')">
+          <input type="text" name="clockIn" onfocus="restrictInputFormat(this, 'time')">
         </div>
+        <select class="ui dropdown button display-none ampm">
+          <option class="item">am</option>
+          <option class="item">pm</option>
+        </select>
       </td>
       <td class="one wide">
         <div class="ui transparent input">
-          <input type="text" name="clockOut" onchange="restrictInputFormat(this, 'time')">
+          <input type="text" name="clockOut" onfocus="restrictInputFormat(this, 'time')">
         </div>
+        <select class="ui dropdown button display-none ampm">
+          <option class="item">am</option>
+          <option class="item">pm</option>
+        </select>
       </td>
       <td class="one wide">
         <span class="hours"></span>
       </td>
-      <td class="three wide notes">
-        <span class="ui transparent input">
-          <input type="text" id="time" name="notes" onchange="restrictInputFormat(this, 'time')">
-          <input type="text" id="note" name="notes">
-          <span class="display-none"><button class="ui icon mini basic button" onclick="removeNotes(this)"><i class="minus red icon"></i></button></span>
-        </span>
-      </td>
+      <td class="three wide notes"></td>
       <td class="one wide center aligned add-notes-cell">
         <button class="ui icon mini basic button display-none" onclick="addNotes(this)"><i class="plus green icon"></i></button>
       </td>
       <td class="one wide center aligned">
-        <button class="ui icon tiny green button" onclick="editTableRow(this, ${userID})">
+        <button class="ui icon tiny green button" onclick="editTableRow(this, ${userID}, false)">
           <i class="check icon"></i>
         </button>
         <button class="ui icon tiny red button" onclick="deleteTableRow(this, ${userID})">
@@ -982,7 +984,11 @@ function addNotes(element) {
 
   const note = `
     <span class="ui transparent input">
-      <input type="text" id="time" name="notes" onchange="restrictInputFormat(this, 'time')">
+      <input type="text" id="time" name="notes" onclick="restrictInputFormat(this, 'time')">
+      <select class="ui dropdown button display-none ampm">
+        <option class="item">am</option>
+        <option class="item">pm</option>
+      </select>
       <input type="text" id="note" name="notes">
       <span class="display-none" style="display:inline-block;"><button class="ui icon mini basic button" onclick="removeNotes(this)"><i class="minus red icon"></i></button></span>
     </span>
@@ -1016,8 +1022,9 @@ endDate.addEventListener('change', () => {
  * 
  * @param element - The button that was clicked
  * @param userID - The user id of the row that was clicked
+ * @param edit - Boolean to determine if we are editing or adding a new row
  */
-async function editTableRow(element, userID): Promise<void> {
+async function editTableRow(element, userID, edit: boolean = false): Promise<void> {
   // If adminControl is set to false
   if(!adminControl) {
     // Open the admin-confirm modal to set adminAccess to true
@@ -1083,7 +1090,7 @@ async function editTableRow(element, userID): Promise<void> {
     };
 
     // If there is a rowID we are editing the row
-    if(rowID) {
+    if(edit) {
       /* Editing existing row */
 
       // Empty the notes array if there are notes in it
@@ -1096,7 +1103,21 @@ async function editTableRow(element, userID): Promise<void> {
         if(input.name === 'notes') {
           // The loop goes through once in time then once in note. After it repeats the process depending on how many notes there are.
           if(input.id === 'time') {
-            notesObject.time = input.value;
+            // Grab the ampm select option from the current cell
+            const ampm: HTMLSelectElement = input.parentElement.parentElement.querySelector('.ampm');
+
+            // Regex for am and pm
+            const pm: RegExp = /\spm/;
+            const am: RegExp = /\sam/;
+
+            if(am.test(input.value) || pm.test(input.value)) {
+              notesObject.time = input.value;
+              input.value = input.value;
+            } else {
+              notesObject.time = input.value + ' ' + ampm.value;
+              input.value = input.value + ' ' + ampm.value;
+            }
+
           } else {
             notesObject.note = input.value;
           }
@@ -1110,10 +1131,27 @@ async function editTableRow(element, userID): Promise<void> {
             }
           }
   
+        } else if(input.name === 'clockIn' || input.name === 'clockOut') {
+          // Grab the ampm select option from the current cell
+          const ampm: HTMLSelectElement = input.parentElement.parentElement.querySelector('.ampm');
+
+          // Regex for am and pm
+          const pm: RegExp = /\spm/;
+          const am: RegExp = /\sam/;
+
+          // Set the new value
+          if(am.test(input.value) || pm.test(input.value)) {
+            userObject.data[rowID][input.name] = input.value;
+            input.value = input.value;
+          } else {
+            userObject.data[rowID][input.name] = input.value + ' ' + ampm.value;
+            input.value = input.value + ' ' + ampm.value;
+          }
+
         } else {
           // Set the new value
           userObject.data[rowID][input.name] = input.value;
-  
+
         }
         input.disabled = true;
       }
@@ -1129,7 +1167,21 @@ async function editTableRow(element, userID): Promise<void> {
         if(input.name === 'notes') {
           // Handle notes during inputs loop
           if(input.id === 'time') {
-            notesObject.time = input.value;
+            // Grab the ampm select option from the current cell
+            const ampm: HTMLSelectElement = input.parentElement.parentElement.querySelector('.ampm');
+
+            // Regex for am and pm
+            const pm: RegExp = /\spm/;
+            const am: RegExp = /\sam/;
+
+            if(am.test(input.value) || pm.test(input.value)) {
+              notesObject.time = input.value;
+              input.value = input.value;
+            } else {
+              notesObject.time = input.value + ' ' + ampm.value;
+              input.value = input.value + ' ' + ampm.value;
+            }
+            
           } else {
             notesObject.note = input.value;
           }
@@ -1142,6 +1194,22 @@ async function editTableRow(element, userID): Promise<void> {
               time: ''
             }
           }
+        } else if(input.name === 'clockIn' || input.name === 'clockOut') {
+          // Grab the ampm select option from the current cell
+          const ampm: HTMLSelectElement = input.parentElement.parentElement.querySelector('.ampm');
+
+          // Regex for am and pm
+          const pm: RegExp = /\spm/;
+          const am: RegExp = /\sam/;
+
+          if(am.test(input.value) || pm.test(input.value)) {
+            newDataRow[input.name] = input.value;
+            input.value = input.value;
+          } else {
+            newDataRow[input.name] = input.value + ' ' + ampm.value;
+            input.value = input.value + ' ' + ampm.value;
+          }
+
         } else {
           newDataRow[input.name] = input.value;
         }
@@ -1157,6 +1225,13 @@ async function editTableRow(element, userID): Promise<void> {
 
 // Function to delete a table row
 async function deleteTableRow(element, userID): Promise<void> {
+  // If adminControl is set to false
+  if(!adminControl) {
+    // Open the admin-confirm modal to set adminAccess to true
+    openUserModal('.admin-confirm');
+    return;
+  }
+
   const doubleCheck: boolean = confirm('Are you sure you want to delete this row?');
 
   if(doubleCheck) {
