@@ -70,7 +70,7 @@
             End Date:
             <input id="endDate" type="date">
           </span>
-          <button class="ui blue button" onclick="createTableRow()">Add</button>
+          <button class="ui blue button" onclick="createTableRow(this)">Add</button>
           <button class="ui green button" onclick="exportToExcel(this)">Save</button>
         </div>
         <table class="ui celled table">
@@ -81,6 +81,7 @@
               <th>Out Time</th>
               <th>Hours</th>
               <th>Notes</th>
+              <th class="add-notes-column display-none">Add Notes</th>
               <th>Actions</th>
             </tr>
           </thead>

@@ -25,6 +25,9 @@ body {
   position: relative;
   z-index: 99; }
 
+.display-none {
+  display: none; }
+
 /* Main screen */
 .main-container {
   padding: 2em 0;

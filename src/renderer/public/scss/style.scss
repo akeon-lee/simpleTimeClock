@@ -75,6 +75,10 @@ body {
   z-index: 99;
 }
 
+.display-none {
+  display: none;
+}
+
 /* Main screen */
 .main-container {
   padding: assortedNums(medium) 0;

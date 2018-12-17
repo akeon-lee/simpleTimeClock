@@ -103,16 +103,21 @@ function displayNotifications(data) {
   // Insert notification element into html each time it is called
   notificationBox.innerHTML = notificationElement;
 
+  const messageBox = notificationBox.querySelector('.message');
+  const divider = notificationBox.querySelector('.divider');
+
   // Remove notification when x (close) is pressed
   notificationBox.querySelector('.close').addEventListener('click', () => {
-    notificationBox.querySelector('.message').remove();
-    notificationBox.querySelector('.divider').remove();
+    messageBox.remove();
+    divider.remove();
   });
 
   // Remove notifiaction on double click
   document.addEventListener('dblclick', () => {
-    notificationBox.querySelector('.message').remove();
-    notificationBox.querySelector('.divider').remove();
+    if(messageBox) {
+      messageBox.remove();
+      divider.remove();
+    }
   });
 }
 

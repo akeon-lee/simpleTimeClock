@@ -4,10 +4,9 @@
  * 
  * @todo:
  *  1) Importing and exporting cutom modules not working. Try to find a fix so we can have the library in it's own file.
- *  2) Time calculation does not work if a user clockin and clockout are on different days
- *  4) We need to make it so time, date and notes format can only be formatted the way it is stored.
- *  5) When adding a new row for user's data only one input shows inside notes, also adding new row does not save
- *  6) If a user edits a row from user's data and it has no notes only one input shows inside notes
+ *  2) When adding a new row the format checker does not work
+ *  3) Weird bug where when you add a new data row in user and delete it, it will delete multiple rows (This has to do with the array index)
+ *  4) When you mark edit as complete with another edit open, it also removes the add notes button for the still in edit mode row
  * 
  */
 
@@ -246,8 +245,6 @@ lib.createExcelFile = async (executor: string, rows: Array<object>, totalHours: 
  * 
  * @param data - The data such as type (success, info, warning or error), header and message being passed in as an object
  * 
- * @todo - Currently there seems to be no use for this display notification in manage users area.
- * 
  */
 function displayNotifications(data) {
   const notificationBox = document.querySelector('.notification-container');
@@ -282,16 +279,21 @@ function displayNotifications(data) {
   // Insert notification element into html each time it is called
   notificationBox.innerHTML = notificationElement;
 
+  const messageBox = notificationBox.querySelector('.message');
+  const divider = notificationBox.querySelector('.divider');
+
   // Remove notification when x (close) is pressed
   notificationBox.querySelector('.close').addEventListener('click', () => {
-    notificationBox.querySelector('.message').remove();
-    notificationBox.querySelector('.divider').remove();
+    messageBox.remove();
+    divider.remove();
   });
 
   // Remove notifiaction on double click
   document.addEventListener('dblclick', () => {
-    notificationBox.querySelector('.message').remove();
-    notificationBox.querySelector('.divider').remove();
+    if(messageBox) {
+      messageBox.remove();
+      divider.remove();
+    }
   });
 }
 
@@ -455,7 +457,7 @@ async function loadUserData() {
           ${users.parsedData.level}
         </td>
         <td class="three wide center aligned">
-          <button class="ui green tiny button" onclick="getData(this)">Get Data</button>
+          <button class="ui green tiny button get-data" onclick="getData(this)">Get Data</button>
         </td>
         <td class="two wide center aligned">
           <button class="ui icon tiny blue button" onclick="editUser(this)">
@@ -473,10 +475,17 @@ async function loadUserData() {
 // Invoke this function to load all users data when the manage users window is opened
 loadUserData();
 
+// Format the dates for HTML date input
+function formatDateForInput(date) {
+  const split = date.split('-');
+  const newDate = `${split[2]}-${split[0]}-${split[1]}`;
+  return newDate;
+}
+
 // Function to get the specified users data from list button
 async function getData(element): Promise<void> {
   // Grab the entire row which the button was clicked on
-  const userRow: HTMLElement = element.parentNode.parentNode;
+  const userRow: HTMLElement = element.parentElement.parentElement;
   const id: string | number = userRow.querySelector('td').getAttribute('data-value');
 
   // Clean the modal before opening a different user
@@ -493,9 +502,6 @@ async function getData(element): Promise<void> {
 
   // If there is user data insert the rows
   if(user.data.length > 0) {
-    // The row number that relates to the array index from users data
-    let i = 0;
-
     // Collect each sessions time to add it all up
     const collectTime: Array<string> = [];
 
@@ -503,40 +509,46 @@ async function getData(element): Promise<void> {
     for(const session of user.data) {
       // Get `inDate`, `clockIn`, `clockOut`, `notes` for `session`
       const { inDate, outDate, clockIn, clockOut, notes }: any = session;
+      const rowIndex = user.data.indexOf(session);
       
       // Get the total hours worked for a specific session
       const hours: string = getTimeForSession(inDate, clockIn, outDate, clockOut);
       collectTime.push(hours);
 
       // Map the notes object based on it's time and note
-      const note: string = session['notes'].map(notes => {
+      const note: string = session['notes'].map((notes, index) => {
         return `
           <span class="ui transparent input">
-            <input type="text" id="time" name="notes" value="${notes.time}" disabled>
+            <input type="text" id="time" name="notes" onchange="restrictInputFormat(this, 'time')" data-value="${index}" value="${notes.time}" disabled>
             <input type="text" id="note" name="notes" value="${notes.note}" disabled>
+            <span class="display-none"><button class="ui icon mini basic button" onclick="removeNotes(this)"><i class="minus red icon"></i></button></span>
           </span>
         `;
       }).join(' ');
 
+      // Format date for HTML Input - @todo This is currently not in use
+      const newInDate = formatDateForInput(inDate);
+      const newOutDate = formatDateForInput(outDate);
+
       // Insert the users data into the table for the body
       const content: string = `
-        <tr class="insert" data-value="${i}">
+        <tr class="insert" data-value="${rowIndex}">
           <td class="one wide">
             <div class="ui transparent input">
-              <input type="text" name="inDate" value="${inDate}" disabled>
+              <input type="text" name="inDate" onchange="restrictInputFormat(this, 'date')" value="${inDate}" disabled>
             </div>
             <div class="ui transparent input">
-              <input type="text" name="outDate" value="${outDate}" disabled>
+              <input type="text" name="outDate" onchange="restrictInputFormat(this, 'date')" value="${outDate}" disabled>
             </div>
           </td>
           <td class="one wide" data-value="${clockIn}">
             <div class="ui transparent input">
-              <input type="text" name="clockIn" value="${clockIn}" disabled>
+              <input type="text" name="clockIn" onchange="restrictInputFormat(this, 'time')" value="${clockIn}" disabled>
             </div>
           </td>
           <td class="one wide" data-value="${clockOut}">
             <div class="ui transparent input">
-              <input type="text" name="clockOut" value="${clockOut}" disabled>
+              <input type="text" name="clockOut" onchange="restrictInputFormat(this, 'time')" value="${clockOut}" disabled>
             </div>
           </td>
           <td class="one wide">
@@ -544,6 +556,9 @@ async function getData(element): Promise<void> {
           </td>
           <td class="three wide notes">
             ${note}
+          </td>
+          <td class="one wide center aligned add-notes-cell" style="display:none;">
+            <button class="ui icon mini basic button display-none" onclick="addNotes(this)" style="display:none;"><i class="plus green icon"></i></button>
           </td>
           <td class="one wide center aligned">
             <button class="ui icon tiny blue button" onclick="editTableRow(this, ${user.id})">
@@ -556,7 +571,6 @@ async function getData(element): Promise<void> {
         </tr>
       `;
       usersDataTable.insertAdjacentHTML('afterbegin', content);
-      i++;
     }
     
     // Format the total hours based on the collectTime being displayed
@@ -615,9 +629,6 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
 
   // If there is user data insert the rows
   if(user.data.length > 0) {
-    // The row number that relates to the array index from users data
-    let i: number = 0;
-
     // Collect each sessions time to add it all up
     const collectTime: Array<string> = [];
 
@@ -625,6 +636,7 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
     for(const session of user.data) {
       // Get `inDate`, `clockIn`, `clockOut`, `notes` for `session`
       const { inDate, outDate, clockIn, clockOut, notes }: any = session;
+      const rowIndex = user.data.indexOf(session);
 
       // Turn the dates into a JavaScript date and get the time to compare and filter the data
       const formattedStartDate = new Date(formatDate(startDate)).getTime();
@@ -637,41 +649,49 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
         collectTime.push(hours);
 
         // Map the notes object based on it's time and note
-        const note: string = notes.map(notes => {
+        const note: string = notes.map((notes, index) => {
           return `
             <span class="ui transparent input">
-              <input type="text" id="time" name="notes" value="${notes.time}" disabled>
+              <input type="text" id="time" name="notes" onchange="restrictInputFormat(this, 'time')" data-value="${index}" value="${notes.time}" disabled>
               <input type="text" id="note" name="notes" value="${notes.note}" disabled>
+              <span class="display-none"><button class="ui icon mini basic button" onclick="removeNotes(this)"><i class="minus red icon"></i></button></span>
             </span>
           `;
         }).join(' ');
+
+        // Format date for HTML Input - @todo This is currently not in use
+        const newInDate = formatDateForInput(inDate);
+        const newOutDate = formatDateForInput(outDate);
   
         // Insert the users data into the table for the body
         const content: string = `
-          <tr class="insert" data-value="${i}">
+          <tr class="insert" data-value="${rowIndex}">
             <td class="one wide">
               <div class="ui transparent input">
-                <input type="text" name="inDate" value="${inDate}" disabled>
+                <input type="text" name="inDate" onchange="restrictInputFormat(this, 'date')" value="${inDate}" disabled>
               </div>
               <div class="ui transparent input">
-                <input type="text" name="outDate" value="${outDate}" disabled>
+                <input type="text" name="outDate" onchange="restrictInputFormat(this, 'date')" value="${outDate}" disabled>
               </div>
             </td>
             <td class="one wide" data-value="${clockIn}">
               <div class="ui transparent input">
-                <input type="text" name="clockIn" value="${clockIn}" disabled>
+                <input type="text" name="clockIn" onchange="restrictInputFormat(this, 'time')" value="${clockIn}" disabled>
               </div>
             </td>
             <td class="one wide" data-value="${clockOut}">
               <div class="ui transparent input">
-                <input type="text" name="clockOut" value="${clockOut}" disabled>
+                <input type="text" name="clockOut" onchange="restrictInputFormat(this, 'time')" value="${clockOut}" disabled>
               </div>
             </td>
             <td class="one wide">
-              <span class="hours">${hours}</span>
+              <span class="hours" data-value="${hours}">${hours}</span>
             </td>
             <td class="three wide notes">
               ${note}
+            </td>
+            <td class="one wide center aligned add-notes-cell" style="display:none;">
+              <button class="ui icon mini basic button display-none" onclick="addNotes(this)" style="display:none;"><i class="plus green icon"></i></button>
             </td>
             <td class="one wide center aligned">
               <button class="ui icon tiny blue button" onclick="editTableRow(this, ${user.id})">
@@ -684,7 +704,6 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
           </tr>
         `;
         usersDataTable.insertAdjacentHTML('afterbegin', content);
-        i++;
       }
     }
     // Format the total hours based on the collectTime being displayed
@@ -715,6 +734,53 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
   }
 }
 
+async function restrictInputFormat(element: HTMLInputElement, type: string): Promise<void> {
+  // Get current users saved data
+  const modal = element.parentElement.parentElement.parentElement.parentElement.parentElement.parentElement.parentElement;
+  const sessionIndex = element.parentElement.parentElement.parentElement.getAttribute('data-value');
+  const userID = modal.querySelector('.modal-header').querySelector('h3').getAttribute('data-value');
+  const persistedData = await lib.read('users', userID);
+  const userSession = persistedData.parsedData.data[sessionIndex];
+
+  if(type === 'date') {
+    // Regexp for how the date should always be formatted
+    const dateFormat = /^(\w{2})-(\w{2})-(\w{4})$/;
+    const testFormat = dateFormat.test(element.value);
+
+    if(!testFormat) {
+      element.value = userSession[element.name];
+      // Notification box for success
+      const notifyData = {
+        type: 'error',
+        header: 'Format Error', 
+        message: 'Please make sure to format the date correctly (mm-dd-yyyy)'
+      };
+      displayNotifications(notifyData);
+    }
+  } else if(type === 'time') {
+    // Regexp for how the time should always be formatted
+    const timeFormat = /^(\w{1,2}):(\w{2}):(\w{2})\s\w{2}$/;
+    const testFormat = timeFormat.test(element.value);
+
+    if(!testFormat) {
+      // If the input is notes we need to get the index of the notes array
+      if(element.name === 'notes') {
+        const noteIndex = element.getAttribute('data-value');
+        element.value = userSession[element.name][noteIndex].time;
+      } else {
+        element.value = userSession[element.name];
+      }
+      // Notification box for success
+      const notifyData = {
+        type: 'error',
+        header: 'Format Error', 
+        message: 'Please make sure to format the time correctly (hh:mm:ss am)'
+      };
+      displayNotifications(notifyData);
+    }
+  }
+}
+
 // Function to format the date from input date
 function formatDate(date): string {
   const newDate: string = date[5] + date[6] + '-' + date[8] + date[9] + '-' + date[0] + date[1] + date[2] + date[3];
@@ -726,8 +792,8 @@ function getTimeForSession(inDate: string, inTime: string, outDate: string, outT
   // Regex for am and pm
   const pm: RegExp = /\spm/;
   const am: RegExp = /\sam/;
-  let splitInTime: Array<string> = [];
-  let splitOutTime: Array<string> = [];
+  let milliIn: number;
+  let milliOut: number;
 
   // Format the time based on the time and state
   function prepareTimes(time, state): Array<string> {
@@ -751,7 +817,7 @@ function getTimeForSession(inDate: string, inTime: string, outDate: string, outT
   // Function to format date and hours into JS readable object
   function convertToJSTime(date: string, time: Array<string>): Date {
     // Split the date into an array
-    const formatDate = date.split('-');
+    const formatDate: Array<string> = date.split('-');
 
     // Convert to JS readable date
     const jsTime = new Date(
@@ -762,105 +828,52 @@ function getTimeForSession(inDate: string, inTime: string, outDate: string, outT
       parseInt(time[1]), 
       parseInt(time[2])
     );
+
     return jsTime;
   }
 
-  /**
-   * @todo - left off here. We need to convert the milliseconds into hours:minutes:seconds
-   */
+  // Function to turn milliseconds into hours & minutes
+  function msToTime(millisec): string {
+    // Get hours from milliseconds
+    const hours: number = millisec / (1000*60*60);
+    const absoluteHours: number = Math.floor(hours);
+    const h: string = (absoluteHours > 9 ? absoluteHours : '0' + absoluteHours).toString();
 
-  // If the time in pm
+    // Get remainder from hours and convert to minutes
+    const minutes: number = (hours - absoluteHours) * 60;
+    const absoluteMinutes: number = Math.floor(minutes);
+    const m: string = (absoluteMinutes > 9 ? absoluteMinutes : '0' +  absoluteMinutes).toString();
+
+    // Return hours and minutes
+    return h + ':' + m;
+  }
+
+  // If the time in pm, set the milliseconds for in time
   if(pm.test(inTime)) {
-    const milisecondTime = convertToJSTime(inDate, prepareTimes(inTime, pm));
-    console.log(milisecondTime);
-
-    splitInTime = prepareTimes(inTime, pm);
+    milliIn = convertToJSTime(inDate, prepareTimes(inTime, pm)).getTime();
   };
 
   if(pm.test(outTime)) {
-    const milisecondTime = convertToJSTime(outDate, prepareTimes(outTime, pm));
-    console.log(milisecondTime);
-
-    splitOutTime = prepareTimes(outTime, pm);
+    milliOut = convertToJSTime(outDate, prepareTimes(outTime, pm)).getTime();
   }
   
-  // If the time in am
+  // If the time in am, set the milliseconds for out time
   if(am.test(inTime)) {
-    const milisecondTime = convertToJSTime(inDate, prepareTimes(inTime, am));
-    console.log(milisecondTime);
-
-    splitInTime = prepareTimes(inTime, am);
+    milliIn = convertToJSTime(inDate, prepareTimes(inTime, am)).getTime();
   }
 
   if(am.test(outTime)) {
-    const milisecondTime = convertToJSTime(outDate, prepareTimes(outTime, am));
-    console.log(milisecondTime);
-
-    splitOutTime = prepareTimes(outTime, am);
+    milliOut = convertToJSTime(outDate, prepareTimes(outTime, am)).getTime();
   }
 
-  /**
-   * Formula to calculate total hours
-   */
-  let totalTime: string | number;
-  // If the hours are equal to each other
-  if(splitInTime[0] === splitOutTime[0]) {
-    // We subract the minutes only
-    totalTime = parseInt(splitOutTime[1]) - parseInt(splitInTime[1]);
-    // If the minutes is less than 10 we prepend 0 to minutes
-    if(totalTime < 10) {
-      totalTime = '00:0' + totalTime;
-    } else {
-      totalTime = '00:' + totalTime;
-    }
-
-  } else {
-    // Subract 60 from in minutes
-    const roundInTime: string | number = 60 - parseInt(splitInTime[1]);
-
-    // Add 1 to in hours
-    const addAfterRound: string | number = parseInt(splitInTime[0]) + 1;
-
-    // Subract out hours with in hours
-    let getHours: string | number = parseInt(splitOutTime[0]) - addAfterRound;
-
-    // Add out minutes
-    let getMinutes: string | number = parseInt(splitOutTime[1]) + roundInTime;
-
-    // If the hours or minutes is NaN default to 0
-    if(isNaN(getHours)) {
-      getHours = 0;
-    }
-
-    if(isNaN(getMinutes)) {
-      getMinutes = 0;
-    }
-
-    // If the minutes is larger than 60 then add 1 to hour and subract 60 from minutes
-    if(getMinutes >= 60) {
-      getHours += 1;
-      getMinutes -= 60;
-    }
-
-    // Format the total time by hrs and minutes. If getHours is less than 10 we prepend a 0, same logic with minutes
-    if(getHours < 10) {
-      getHours = '0' + getHours.toString();
-    }
-
-    if(getMinutes < 10) {
-      getMinutes = '0' + getMinutes.toString();
-    }
-
-    // Assemble the total time
-    totalTime = getHours.toString() + ':' + getMinutes.toString();
-  }
-
-  return totalTime.toString();
+  // Calculate and return the total time
+  return msToTime(milliOut - milliIn);
 }
 
 // Function to clean the user modal before opening it
 function cleanUserModal(date: boolean = false): void {
-  const inserts: NodeListOf<Element> = document.querySelectorAll('.insert');
+  const inserts: NodeListOf<HTMLElement> = document.querySelectorAll('.insert');
+  const hiddens: NodeListOf<HTMLElement> = document.querySelectorAll('.display-none');
 
   // If date needs to be cleaned
   if(date) {
@@ -873,6 +886,11 @@ function cleanUserModal(date: boolean = false): void {
   // Remove previous data with the className insert
   for(const insert of inserts) {
     insert.remove();
+  }
+
+  // Hide all elements that were originally hidden
+  for(const hidden of hiddens) {
+    hidden.style.display = 'none';
   }
 }
 
@@ -891,8 +909,9 @@ function openUserModal(modalClass: string): void {
 }
 
 // Create a new table row
-function createTableRow(): void {
+function createTableRow(element): void {
   const usersDataTable: HTMLElement = document.querySelector('.list-users-data');
+  const userID = element.parentElement.parentElement.parentElement.querySelector('.modal-header').querySelector('h3').getAttribute('data-value');
 
   // Remove the no data row if it exists
   const noDataRow: HTMLElement = document.querySelector('.no-data');
@@ -900,41 +919,82 @@ function createTableRow(): void {
     noDataRow.remove();
   };
 
+  // Select the hidden add notes column and display it, while display the cells of other rows
+  const addNotesColumn: HTMLElement = document.querySelector('.add-notes-column');
+  const addNotesCells: NodeListOf<HTMLElement> = element.parentElement.parentElement.querySelectorAll('.add-notes-cell');
+
+  addNotesColumn.style.display = 'table-cell';
+  for(const cell of addNotesCells) {
+    cell.style.display = 'table-cell';
+  }
+
   // Insert the users data into the table for the body
   const content: string = `
     <tr class="insert">
-      <td class="one wide" data-value="">
+      <td class="one wide">
         <div class="ui transparent input">
-          <input type="text" value="">
+          <input type="text" name="inDate" onchange="restrictInputFormat(this, 'date')">
+        </div>
+        <div class="ui transparent input">
+          <input type="text" name="outDate" onchange="restrictInputFormat(this, 'date')">
         </div>
       </td>
-      <td class="one wide" data-value="">
+      <td class="one wide">
         <div class="ui transparent input">
-          <input type="text" value="">
+          <input type="text" name="clockIn" onchange="restrictInputFormat(this, 'time')">
         </div>
       </td>
-      <td class="one wide" data-value="">
+      <td class="one wide">
         <div class="ui transparent input">
-          <input type="text" value="">
+          <input type="text" name="clockOut" onchange="restrictInputFormat(this, 'time')">
         </div>
       </td>
-      <td class="one wide"></td>
-      <td class="three wide" data-value="">
-        <div class="ui transparent input">
-          <input type="text" value="">
-        </div>
+      <td class="one wide">
+        <span class="hours"></span>
+      </td>
+      <td class="three wide notes">
+        <span class="ui transparent input">
+          <input type="text" id="time" name="notes" onchange="restrictInputFormat(this, 'time')">
+          <input type="text" id="note" name="notes">
+          <span class="display-none"><button class="ui icon mini basic button" onclick="removeNotes(this)"><i class="minus red icon"></i></button></span>
+        </span>
+      </td>
+      <td class="one wide center aligned add-notes-cell">
+        <button class="ui icon mini basic button display-none" onclick="addNotes(this)"><i class="plus green icon"></i></button>
       </td>
       <td class="one wide center aligned">
-        <button class="ui icon tiny green button" onclick="editTableRow(this)">
+        <button class="ui icon tiny green button" onclick="editTableRow(this, ${userID})">
           <i class="check icon"></i>
         </button>
-        <button class="ui icon tiny red button" onclick="deleteTableRow(this)">
+        <button class="ui icon tiny red button" onclick="deleteTableRow(this, ${userID})">
           <i class="trash icon"></i>
         </button>
       </td>
     </tr>
   `;
   usersDataTable.insertAdjacentHTML('afterbegin', content);
+}
+
+// Function to add more notes
+function addNotes(element) {
+  // Select the notes container box element
+  const noteBox = element.parentElement.parentElement.querySelector('.notes');
+
+  const note = `
+    <span class="ui transparent input">
+      <input type="text" id="time" name="notes" onchange="restrictInputFormat(this, 'time')">
+      <input type="text" id="note" name="notes">
+      <span class="display-none" style="display:inline-block;"><button class="ui icon mini basic button" onclick="removeNotes(this)"><i class="minus red icon"></i></button></span>
+    </span>
+  `;
+  noteBox.insertAdjacentHTML('afterbegin', note);
+}
+
+// Function to remove notes
+function removeNotes(element) {
+  // Select the note and remove
+  const note = element.parentElement.parentElement;
+  note.remove();
 }
 
 /**
@@ -966,6 +1026,9 @@ async function editTableRow(element, userID): Promise<void> {
   }
   
   const row: HTMLElement = element.parentNode.parentNode;
+  const addNotesColumn: HTMLElement = document.querySelector('.add-notes-column');
+  const hiddenElements: NodeListOf<HTMLElement> = row.querySelectorAll('.display-none');
+  const addNotesCells: NodeListOf<HTMLElement> = row.parentElement.parentElement.parentElement.querySelectorAll('.add-notes-cell');
   const inputs: NodeListOf<HTMLInputElement> = row.querySelectorAll('input');
   const editIcon: HTMLElement = element.querySelector('i');
 
@@ -975,6 +1038,17 @@ async function editTableRow(element, userID): Promise<void> {
     editIcon.className = 'check icon';
     element.classList.add('green');
     element.classList.remove('blue');
+    
+    // Display all hidden elements for notes
+    addNotesColumn.style.display = 'table-cell';
+    for(const hidden of hiddenElements) {
+      hidden.style.display = 'table-cell';
+    }
+
+    // Display all cells without the add button
+    for(const cell of addNotesCells) {
+      cell.style.display = 'table-cell';
+    }
 
     // Loop through the inputs in the row and enable them
     for(const input of inputs) {
@@ -986,10 +1060,21 @@ async function editTableRow(element, userID): Promise<void> {
     element.classList.remove('green');
     element.classList.add('blue');
 
+    // Hide hidden elements for notes
+    addNotesColumn.style.display = 'none';
+    for(const hidden of hiddenElements) {
+      hidden.style.display = 'none';
+    }
+
+    // Display all cells without the add button
+    for(const cell of addNotesCells) {
+      cell.style.display = 'none';
+    }
+
     // Create the user object to update the users data
     const rowID = row.getAttribute('data-value');
     const user = await lib.read('users', userID);
-    const userObject: { parsedData: object, data: object } = user.parsedData;
+    const userObject: { parsedData: object, data: Array<object> } = user.parsedData;
 
     // Creating the notes object for notes key inside userObject
     let notesObject: { note: string, time: string } = {
@@ -997,38 +1082,73 @@ async function editTableRow(element, userID): Promise<void> {
       time: ''
     };
 
-    // Empty the notes array if there are notes in it
-    if(userObject.data[rowID]['notes'].length > 0) {
-      userObject.data[rowID]['notes'] = [];
-    }
+    // If there is a rowID we are editing the row
+    if(rowID) {
+      /* Editing existing row */
 
-    // Loop through the inputs in the row and disable them
-    for(const input of inputs) {
-
-      // Update based on the rowID for index inside the data array
-      if(input.name === 'notes') {
-        // The loop goes through once in time then once in note. After it repeats the process depending on how many notes there are.
-        if(input.id === 'time') {
-          notesObject.time = input.value;
-        } else {
-          notesObject.note = input.value;
-        }
-
-        // Once the notesObject.note has been set for a specific note we push the data and empty the notesObject for the next note
-        if(notesObject.note !== '' && notesObject.time !== '') {
-          userObject.data[rowID][input.name].push(notesObject);
-          notesObject = {
-            note: '',
-            time: ''
-          }
-        }
-
-      } else {
-        // Set the new value
-        userObject.data[rowID][input.name] = input.value;
-
+      // Empty the notes array if there are notes in it
+      if(userObject.data[rowID]['notes'].length > 0) {
+        userObject.data[rowID]['notes'] = [];
       }
-      input.disabled = true;
+      // Loop through the inputs in the row and disable them
+      for(const input of inputs) {
+        // Update based on the rowID for index inside the data array
+        if(input.name === 'notes') {
+          // The loop goes through once in time then once in note. After it repeats the process depending on how many notes there are.
+          if(input.id === 'time') {
+            notesObject.time = input.value;
+          } else {
+            notesObject.note = input.value;
+          }
+  
+          // Once the notesObject.note has been set for a specific note we push the data and empty the notesObject for the next note
+          if(notesObject.note !== '' && notesObject.time !== '') {
+            userObject.data[rowID][input.name].push(notesObject);
+            notesObject = {
+              note: '',
+              time: ''
+            }
+          }
+  
+        } else {
+          // Set the new value
+          userObject.data[rowID][input.name] = input.value;
+  
+        }
+        input.disabled = true;
+      }
+    } else {
+      /* Adding a new row */
+
+      // Create newDataRow object to gather the data from inputs
+      const newDataRow = {};
+      newDataRow['notes'] = [];
+
+      for(const input of inputs) {
+        // Handle all object properties based on their inputs name
+        if(input.name === 'notes') {
+          // Handle notes during inputs loop
+          if(input.id === 'time') {
+            notesObject.time = input.value;
+          } else {
+            notesObject.note = input.value;
+          }
+
+          // Once the notesObject.note has been set for a specific note we push the data and empty the notesObject for the next note
+          if(notesObject.note !== '' && notesObject.time !== '') {
+            newDataRow[input.name].push(notesObject);
+            notesObject = {
+              note: '',
+              time: ''
+            }
+          }
+        } else {
+          newDataRow[input.name] = input.value;
+        }
+
+        input.disabled = true;
+      }
+      userObject.data.push(newDataRow);
     }
 
     const updateUser: { success } | { error } = await lib.update('users', userID, userObject);
@@ -1036,101 +1156,130 @@ async function editTableRow(element, userID): Promise<void> {
 }
 
 // Function to delete a table row
-function deleteTableRow(element): void {
+async function deleteTableRow(element, userID): Promise<void> {
   const doubleCheck: boolean = confirm('Are you sure you want to delete this row?');
 
   if(doubleCheck) {
-    element.parentNode.parentNode.remove();
-  }
-  return;
-}
+    const user = await lib.read('users', userID);
+    const userObject = user.parsedData;
+    const rowIndex = element.parentElement.parentElement.getAttribute('data-value');
 
-// Function to save data to a file
-function exportToExcel(element: HTMLElement): void {
-  // Gather all the neccessary elements and data
-  const userDataModal: HTMLElement = element.parentElement.parentElement.parentElement;
-  let fileName = <any>userDataModal.querySelector('.user-header');
-  fileName = fileName.innerText;
-  const rows: NodeListOf<HTMLElement> = userDataModal.querySelectorAll('tr');
-  const totalHours = userDataModal.querySelector('#totalHours').getAttribute('data-value');
-  
-  // Create an object for each session to be pushed into formatUserDataForExcel[]
-  const formatUserDataForExcel: Array<object> = [];
-  let session: any = {
-    inDate: '',
-    outDate: '',
-    clockIn: '',
-    clockOut: '',
-    hours: '',
-    notes: ''
-  };
+    userObject.data.splice(rowIndex, 1);
+    const updateUser: { success } | { error } = await lib.update('users', userID, userObject);
+    element.parentElement.parentElement.remove();
 
-  // Loop through rows and collect the inputs. According to the inputs fill in session{}
-  for(const row of rows) {
-    const inputs: NodeListOf<HTMLInputElement> = row.querySelectorAll('input');
-    for(const input of inputs) {
-      if(input.name === 'inDate') {
-        session.inDate = input.value;
-      } else if(input.name === 'outDate') {
-        session.outDate = input.value;
-      } else if(input.name === 'clockIn') {
-        session.clockIn = input.value;
-      } else if(input.name === 'clockOut') {
-        session.clockOut = input.value;
-      }
+    // Select the outer user elements
+    const outerUserRows = document.querySelectorAll('.get-data');
 
-      // If the sessions object dates, clockIn and clockOut has been filled move onto the next step
-      if(session.inDate !== '' && session.outDate !== '' && session.clockIn !== '' && session.clockOut !== '') {
-        // Set session hours and notes
-        session.hours = row.querySelector('.hours').getAttribute('data-value');
-        const notes: NodeListOf<HTMLInputElement> = row.querySelector('.notes').querySelectorAll('input');
-        // The flag so that the last note printed does not contain seperator
-        let flag: number = 0;
-        for(const note of notes) {
-          if(note.id === 'time') {
-            session.notes += note.value + ' - ';
-          } else {
-            if(flag !== notes.length - 1) {
-              session.notes += note.value + ' || ';
-            } else {
-              session.notes += note.value;
-            }
-          }
-          flag++;
-        }
-
-        // Push the session object into formatUserDataForExcel[] and clear the session object
-        formatUserDataForExcel.push(session);
-        session = {
-          inDate: '',
-          outDate: '',
-          clockIn: '',
-          clockOut: '',
-          hours: '',
-          notes: ''
-        };
+    cleanUserModal();
+    
+    // Loop through until you find the correct user row based on the paramenter userID
+    for(const button of outerUserRows) {
+      const rowID = button.parentElement.parentElement.querySelector('td').getAttribute('data-value');
+      
+      // Once found get the data and break out of the loop
+      if(parseInt(userID) === parseInt(rowID)) {
+        getData(button);
+        break;
       }
     }
   }
+}
 
-  // Execute createExcelFile() with the gathered parameters
-  lib.createExcelFile('admin', formatUserDataForExcel, totalHours, fileName)
-    .then(() => {
-      // Notification box for success
-      const notifyData = {
-        type: 'success',
-        header: 'Export Successful', 
-        message: 'The users data has been exported successfully'
-      };
-      displayNotifications(notifyData);
-    })
-  .catch(error => {
-      // Notification box for errors
-      const notifyData = {
-        type: 'error',
-        header: 'Export Failure', 
-        message: error.error
-      };
-      displayNotifications(notifyData);
-  });
+// Function to save data to a file
+async function exportToExcel(element: HTMLElement): Promise<void> {
+  // Check for admin access
+  if(!adminControl) {
+    // Open the admin-confirm modal to set adminAccess to true
+    openUserModal('.admin-confirm');
+    return;
+  }
+  
+  try {
+    // Gather all the neccessary elements and data
+    const userDataModal: HTMLElement = element.parentElement.parentElement.parentElement;
+    let fileName = <any>userDataModal.querySelector('.user-header');
+    fileName = fileName.innerText;
+    const rows: NodeListOf<HTMLElement> = userDataModal.querySelectorAll('tr');
+    const totalHours = userDataModal.querySelector('#totalHours').getAttribute('data-value');
+    
+    // Create an object for each session to be pushed into formatUserDataForExcel[]
+    const formatUserDataForExcel: Array<object> = [];
+    let session: any = {
+      inDate: '',
+      outDate: '',
+      clockIn: '',
+      clockOut: '',
+      hours: '',
+      notes: ''
+    };
+  
+    // Loop through rows and collect the inputs. According to the inputs fill in session{}
+    for(const row of rows) {
+      const inputs: NodeListOf<HTMLInputElement> = row.querySelectorAll('input');
+      for(const input of inputs) {
+        if(input.name === 'inDate') {
+          session.inDate = input.value;
+        } else if(input.name === 'outDate') {
+          session.outDate = input.value;
+        } else if(input.name === 'clockIn') {
+          session.clockIn = input.value;
+        } else if(input.name === 'clockOut') {
+          session.clockOut = input.value;
+        }
+  
+        // If the sessions object dates, clockIn and clockOut has been filled move onto the next step
+        if(session.inDate !== '' && session.outDate !== '' && session.clockIn !== '' && session.clockOut !== '') {
+          // Set session hours and notes
+          session.hours = row.querySelector('.hours').getAttribute('data-value');
+          const notes: NodeListOf<HTMLInputElement> = row.querySelector('.notes').querySelectorAll('input');
+          // The flag so that the last note printed does not contain seperator
+          let flag: number = 0;
+          for(const note of notes) {
+            if(note.id === 'time') {
+              session.notes += note.value + ' - ';
+            } else {
+              if(flag !== notes.length - 1) {
+                session.notes += note.value + ' || ';
+              } else {
+                session.notes += note.value;
+              }
+            }
+            flag++;
+          }
+  
+          // Push the session object into formatUserDataForExcel[] and clear the session object
+          formatUserDataForExcel.push(session);
+          session = {
+            inDate: '',
+            outDate: '',
+            clockIn: '',
+            clockOut: '',
+            hours: '',
+            notes: ''
+          };
+        }
+      }
+    }
+  
+    // Execute createExcelFile() with the gathered parameters
+    await lib.createExcelFile('admin', formatUserDataForExcel, totalHours, fileName);
+
+    // Notification box for success
+    const notifyData = {
+      type: 'success',
+      header: 'Export Successful', 
+      message: 'The users data has been exported successfully'
+    };
+    displayNotifications(notifyData);
+  } catch(e) {
+    console.log(e);
+    // Notification box for errors
+    const notifyData = {
+      type: 'error',
+      header: 'Export Failure', 
+      message: 'The users data has been failed to export'
+    };
+    displayNotifications(notifyData); 
+  }
 }
