@@ -304,7 +304,6 @@ function displayNotifications(data) {
 /**
  * Manage Users Window
  * @overview: Start main window section
- * 
  */
 
 // Function to get admin control from setting
