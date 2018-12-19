@@ -1,6 +1,9 @@
 // Import dependencies
 import * as fs from 'fs';
 import * as path from 'path';
+import * as electron from 'electron';
+
+const { app, remote } = electron;
 
 type Data = {
   baseDir: string,
@@ -12,8 +15,11 @@ type Data = {
 }
 const lib = <Data>{};
 
+// Getting path to persist data. Renderer process has to get `app` module via `remote`, whereas the main process can get it directly
+const userDataPath = (app || remote.app).getPath('userData');
+
 // Base directory of the data folder
-lib.baseDir = path.join(__dirname, '../../.data/');
+lib.baseDir = path.join(userDataPath, '/');
 // Read data from a file
 lib.read = (dir, file): Promise<object> => {
   return new Promise((resolve, reject) => {

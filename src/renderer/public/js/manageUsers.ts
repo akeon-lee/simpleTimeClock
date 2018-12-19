@@ -12,6 +12,10 @@ import * as fs from 'fs';
 import { User } from '../../models/user';
 import * as Excel from 'exceljs';
 import * as Cleave from 'cleave.js';
+import * as electron from 'electron';
+import * as crypto from 'crypto';
+
+const { app, remote } = electron;
 
 type Data = {
   baseDir: string,
@@ -25,8 +29,11 @@ type Data = {
 }
 const lib = <Data>{};
 
+// Getting path to persist data. Renderer process has to get `app` module via `remote`, whereas the main process can get it directly
+const userDataPath = (app || remote.app).getPath('userData');
+
 // Base directory of the data folder
-lib.baseDir = path.join(__dirname, '../../.data/');
+lib.baseDir = path.join(userDataPath, '/');
 
 // Write data to the file
 lib.create = (dir, file, data): Promise<object> => {
@@ -300,8 +307,27 @@ function displayNotifications(data) {
  * 
  */
 
+// Function to get admin control from setting
+async function getAdminControlSetting() {
+  const settingData = await lib.read('', 'settings');
+  const setting = settingData.parsedData;
+
+  if(setting.restrictAdminAccess === 'true') {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 // Global admin control variable
-let adminControl: boolean = false;
+let adminControl: boolean;
+
+// Run the getAdminControlSetting() function, get the setting value and set the global adminControl
+getAdminControlSetting()
+  .then((result) => {
+    adminControl = result;
+  })
+.catch(e => console.log(e));
 
 // Genereate 5 random numbers for id
 function generateRandomNumbers(): number {
@@ -315,6 +341,43 @@ function generateRandomNumbers(): number {
   return Number(randomNumber);
 }
 
+// Function to hash password
+function hashPassword(password) {
+  // Hash the password
+  const secret = '@Qa8NBZ4zSfA]:a?';
+  const hashedPassword = crypto.createHmac('sha256', secret).update(password).digest('hex');
+  return hashedPassword;
+}
+
+// This function creates a new users directory along with an admin if the users directory does not exist
+async function addDefaultAdmin() {
+  const hash = hashPassword('master');
+
+  const adminObject = {
+    id: 'master',
+    firstName: 'master',
+    lastName: 'admin',
+    level: 'admin',
+    password: hash,
+    session: {
+      status: false
+    },
+    data: []
+  }
+
+  await lib.create('users', adminObject.id, adminObject);
+}
+
+// Create directory if it doesn't exist
+if(!fs.existsSync(lib.baseDir + 'users')) {
+  fs.mkdirSync(lib.baseDir + 'users');
+}
+
+// Create master admin if it doesn't exist
+if(!fs.existsSync(lib.baseDir + 'users/master.json')) {
+  addDefaultAdmin();
+}
+
 // Function to confirm an admin before performing an action
 async function confirmAdminStatus(form): Promise<void> {
   const container: HTMLElement = form.parentElement.parentElement.parentElement;
@@ -325,9 +388,13 @@ async function confirmAdminStatus(form): Promise<void> {
     // Get the user object
     const user = await lib.read('users', id);
     const parsed = user.parsedData;
+
+    // Hash the password then compare to saved password
+    const password: HTMLInputElement = form.querySelector('.admin-password').value;
+    const hash = hashPassword(password);
   
     // If the user entered is an admin proceed
-    if(parsed.level === 'admin') {
+    if(parsed.level === 'admin' && parsed.password === hash) {
       // Notification box for success
       const notifyData = {
         type: 'success',
@@ -348,7 +415,7 @@ async function confirmAdminStatus(form): Promise<void> {
       };
       displayNotifications(notifyData);
   
-      console.error('An invalid admin ID has been entered');
+      console.error('An invalid admin ID or password has been entered');
     }
   } catch(e) {
     // Notification box for error when there is no input or a user id that does not exist
@@ -387,7 +454,13 @@ async function addUser(form): Promise<void> {
   const userData = <User>{};
   for (const [key, value] of formData.entries()) {
     userData.id = id;
-    userData[key] = <string>value;
+    if(key === 'password') {
+      // Hash the password
+      const hash = hashPassword(value);
+      userData[key] = hash;
+    } else {
+      userData[key] = <string>value;
+    }
     userData.session = {
       status: false
     };
@@ -404,13 +477,146 @@ async function addUser(form): Promise<void> {
   loadUserData();
 }
 
+/**
+ * Add the admin password field when creating a user
+ * 
+ * @note - This is not being used. We just have the password field available but not required to input
+ * 
+ */
+function adminPasswordInput(element) {
+  const select = element.querySelector('select');
+  const addUserForm = element.parentElement.querySelector('.name-fields');
+
+  if(select.value === 'admin') {
+    const passwordInput = `
+      <div class="field password-field">
+        <input type="password" name="password" placeholder="Password">
+      </div>
+    `;
+    addUserForm.insertAdjacentHTML('afterend', passwordInput);
+  } else {
+    const passwordField = element.parentElement.querySelector('.password-field');
+    passwordField.remove();
+  }
+}
+
+/**
+ * Class to create user modal
+ * 
+ * @todo - when you figure out how to import modules put this in its own class file
+ * 
+ */
+
+class UserModal {
+  userInfo;
+
+  constructor(userInfo) {
+    this.userInfo = userInfo
+  }
+
+  createModal() {
+    return `
+      <div class="modal user-edit-modal">
+        <div class="inner-modal">
+          <div class="modal-header">
+            <h3>Edit User ${this.userInfo.id}</h3>
+            <span class="close">&times;</span>
+          </div>
+          <div class="modal-body scroller">
+            <form class="user-info-form" onsubmit="event.preventDefault();">
+              <table class="ui celled table">
+                <thead>
+                  <tr>
+                    <th>id</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Level</th>
+                    <th>Password</th>
+                  </tr>
+                </thead>
+                <tbody class="list-users-data">
+                  <td>
+                    <div class="ui input">
+                      <input type="text" name="id" value="${this.userInfo.id}">
+                    </div>
+                  </td>
+                  <td>
+                    <div class="ui input">
+                      <input type="text" name="firstName" value="${this.userInfo.firstName}">
+                    </div>
+                  </td>
+                  <td>
+                    <div class="ui input">
+                      <input type="text" name="lastName" value="${this.userInfo.lastName}">
+                    </div>
+                  </td>
+                  <td>
+                    <input type="hidden" class="hidden-user-level" name="level" value="${this.userInfo.level}">
+                    <select class="ui fluid search dropdown" name="level" onchange="updateHiddenInputLevel(this)">
+                      <option value="admin" ${this.userInfo.level === 'admin' ? 'selected' : ''}>Admin</option>
+                      <option value="employee" ${this.userInfo.level === 'employee' ? 'selected' : ''}>Employee</option>
+                    </select>
+                  </td>
+                  <td>
+                    <div class="ui input">
+                      <input type="password" name="password" value="${this.userInfo.password}">
+                    </div>
+                  </td>
+                </tbody>
+              </table>
+              <button class="ui primary button save-user-data" type="submit">Submit</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+}
+
 // Function to edit a user
-function editUser() {
+async function editUser(element) {
   if(!adminControl) {
     // Open the admin-confirm modal to set adminAccess to true
     openUserModal('.admin-confirm');
     return;
   }
+
+  // Grab the userID from the row
+  const userID = element.parentElement.parentElement.querySelector('td').getAttribute('data-value');
+  const userInfo = await lib.read('users', userID);
+  const parsedUserInfo = userInfo.parsedData;
+
+  // Instantiate the user modal class and append it to the users-container
+  const userModal = new UserModal(parsedUserInfo);
+  const userContainer = document.querySelector('.user-edit-modal-container');
+
+  userContainer.insertAdjacentHTML('afterend', userModal.createModal());
+  openUserModal('.user-edit-modal');
+
+  // When the submit button is clicked, update the user info
+  document.querySelector('.save-user-data').addEventListener('click', async () => {
+    const formData: NodeListOf<HTMLInputElement> = document.querySelector('.user-info-form').querySelectorAll('input');
+    const userModal: HTMLElement = document.querySelector('.user-edit-modal');
+
+    for(const form of formData) {
+      if(form.name === 'password' && form.value !== parsedUserInfo.password) {
+        // Hash the password
+        const hash = hashPassword(form.value);
+        parsedUserInfo[form.name] = hash;
+      } else {
+        parsedUserInfo[form.name] = form.value;
+      }
+    }
+
+    await lib.update('users', userID, parsedUserInfo);
+    userModal.style.display = 'none';
+  });
+}
+
+// Update the hidden input for the user level when selecting from dropdown
+function updateHiddenInputLevel(element) {
+  const hiddenInput = element.parentElement.querySelector('.hidden-user-level');
+  hiddenInput.value = element.value;
 }
 
 // Function to delete a user
@@ -472,7 +678,12 @@ async function loadUserData() {
 // Invoke this function to load all users data when the manage users window is opened
 loadUserData();
 
-// Format the dates for HTML date input
+/**
+ * Format the dates for HTML date input
+ * 
+ * @note - This function is not being used anywhere. It should be used if we decide to change the date input to an actual date input
+ * 
+ */
 function formatDateForInput(date) {
   const split = date.split('-');
   const newDate = `${split[2]}-${split[0]}-${split[1]}`;
@@ -502,6 +713,10 @@ async function getData(element): Promise<void> {
     // Collect each sessions time to add it all up
     const collectTime: Array<string> = [];
 
+    // Regex for am and pm
+    const pm: RegExp = /\spm/;
+    const am: RegExp = /\sam/;
+
     // Loop through users data
     for(const session of user.data) {
       // Get `inDate`, `clockIn`, `clockOut`, `notes` for `session`
@@ -518,18 +733,14 @@ async function getData(element): Promise<void> {
           <span class="ui transparent input">
             <input type="text" id="time" name="notes" onfocus="restrictInputFormat(this, 'time')" data-value="${index}" value="${notes.time}" disabled>
             <select class="ui dropdown button display-none ampm" style="display:none;">
-              <option class="item">am</option>
-              <option class="item">pm</option>
+              <option class="item" ${am.test(notes.time) ? 'selected' : ''}>am</option>
+              <option class="item" ${pm.test(notes.time) ? 'selected' : ''}>pm</option>
             </select>
             <input type="text" id="note" name="notes" value="${notes.note}" disabled>
             <span class="display-none"><button class="ui icon mini basic button" onclick="removeNotes(this)"><i class="minus red icon"></i></button></span>
           </span>
         `;
       }).join(' ');
-
-      // Format date for HTML Input - @todo This is currently not in use
-      const newInDate = formatDateForInput(inDate);
-      const newOutDate = formatDateForInput(outDate);
 
       // Insert the users data into the table for the body
       const content: string = `
@@ -547,8 +758,8 @@ async function getData(element): Promise<void> {
               <input type="text" name="clockIn" onfocus="restrictInputFormat(this, 'time')" value="${clockIn}" disabled>
             </div>
             <select class="ui dropdown button display-none ampm" style="display:none;">
-              <option class="item">am</option>
-              <option class="item">pm</option>
+              <option class="item" ${am.test(clockIn) ? 'selected' : ''}>am</option>
+              <option class="item" ${pm.test(clockIn) ? 'selected' : ''}>pm</option>
             </select>
           </td>
           <td class="one wide" data-value="${clockOut}">
@@ -556,8 +767,8 @@ async function getData(element): Promise<void> {
               <input type="text" name="clockOut" onfocus="restrictInputFormat(this, 'time')" value="${clockOut}" disabled>
             </div>
             <select class="ui dropdown button display-none ampm" style="display:none;">
-              <option class="item">am</option>
-              <option class="item">pm</option>
+              <option class="item" ${am.test(clockOut) ? 'selected' : ''}>am</option>
+              <option class="item" ${pm.test(clockOut) ? 'selected' : ''}>pm</option>
             </select>
           </td>
           <td class="one wide">
@@ -641,6 +852,10 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
     // Collect each sessions time to add it all up
     const collectTime: Array<string> = [];
 
+    // Regex for am and pm
+    const pm: RegExp = /\spm/;
+    const am: RegExp = /\sam/;
+
     // Loop through users data
     for(const session of user.data) {
       // Get `inDate`, `clockIn`, `clockOut`, `notes` for `session`
@@ -663,18 +878,14 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
             <span class="ui transparent input">
               <input type="text" id="time" name="notes" onfocus="restrictInputFormat(this, 'time')" data-value="${index}" value="${notes.time}" disabled>
               <select class="ui dropdown button display-none ampm" style="display:none;">
-                <option class="item">am</option>
-                <option class="item">pm</option>
+                <option class="item" ${am.test(notes.time) ? 'selected' : ''}>am</option>
+                <option class="item" ${pm.test(notes.time) ? 'selected' : ''}>pm</option>
               </select>
               <input type="text" id="note" name="notes" value="${notes.note}" disabled>
               <span class="display-none"><button class="ui icon mini basic button" onclick="removeNotes(this)"><i class="minus red icon"></i></button></span>
             </span>
           `;
         }).join(' ');
-
-        // Format date for HTML Input - @todo This is currently not in use
-        const newInDate = formatDateForInput(inDate);
-        const newOutDate = formatDateForInput(outDate);
   
         // Insert the users data into the table for the body
         const content: string = `
@@ -692,8 +903,8 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
                 <input type="text" name="clockIn" onfocus="restrictInputFormat(this, 'time')" value="${clockIn}" disabled>
               </div>
               <select class="ui dropdown button display-none ampm" style="display:none;">
-                <option class="item">am</option>
-                <option class="item">pm</option>
+                <option class="item" ${am.test(clockIn) ? 'selected' : ''}>am</option>
+                <option class="item" ${pm.test(clockIn) ? 'selected' : ''}>pm</option>
               </select>
             </td>
             <td class="one wide" data-value="${clockOut}">
@@ -701,8 +912,8 @@ async function getDataWithDate(startDate: string, endDate: string): Promise<void
                 <input type="text" name="clockOut" onfocus="restrictInputFormat(this, 'time')" value="${clockOut}" disabled>
               </div>
               <select class="ui dropdown button display-none ampm" style="display:none;">
-                <option class="item">am</option>
-                <option class="item">pm</option>
+                <option class="item" ${am.test(clockOut) ? 'selected' : ''}>am</option>
+                <option class="item" ${pm.test(clockOut) ? 'selected' : ''}>pm</option>
               </select>
             </td>
             <td class="one wide">
@@ -1104,7 +1315,7 @@ async function editTableRow(element, userID, edit: boolean = false): Promise<voi
           // The loop goes through once in time then once in note. After it repeats the process depending on how many notes there are.
           if(input.id === 'time') {
             // Grab the ampm select option from the current cell
-            const ampm: HTMLSelectElement = input.parentElement.parentElement.querySelector('.ampm');
+            const ampm: HTMLSelectElement = input.parentElement.querySelector('.ampm');
 
             // Regex for am and pm
             const pm: RegExp = /\spm/;
@@ -1168,7 +1379,7 @@ async function editTableRow(element, userID, edit: boolean = false): Promise<voi
           // Handle notes during inputs loop
           if(input.id === 'time') {
             // Grab the ampm select option from the current cell
-            const ampm: HTMLSelectElement = input.parentElement.parentElement.querySelector('.ampm');
+            const ampm: HTMLSelectElement = input.parentElement.querySelector('.ampm');
 
             // Regex for am and pm
             const pm: RegExp = /\spm/;

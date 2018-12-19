@@ -3,6 +3,8 @@ const { dialog } = electron.remote;
 import * as path from 'path';
 import * as fs from 'fs';
 
+const { app, remote } = electron;
+
 /**
  * File system library.
  * 
@@ -11,13 +13,46 @@ import * as fs from 'fs';
 
 type Data = {
   baseDir: string,
+  create: Function,
   read: Function,
   update: Function
 }
 const lib = <Data>{};
 
+// Getting path to persist data. Renderer process has to get `app` module via `remote`, whereas the main process can get it directly
+const userDataPath = (app || remote.app).getPath('userData');
+
 // Base directory of the data folder
-lib.baseDir = path.join(__dirname, '../../.data/');
+lib.baseDir = path.join(userDataPath, '/');
+
+// Write data to the file
+lib.create = (dir, file, data): Promise<object> => {
+  return new Promise((resolve, reject) => {
+    // Open the file for writing
+    fs.open(`${lib.baseDir + dir}/${file}.json`, 'wx', (error, fileDescriptor) => {
+      if(!error && fileDescriptor) {
+        // Convert the data to a string
+        const stringData = JSON.stringify(data);
+  
+        // Write to file and close it
+        fs.writeFile(fileDescriptor, stringData, (error) => {
+          if(error) {
+            reject({ error: 'Error writing to file' });
+          }
+  
+          fs.close(fileDescriptor, (error) => {
+            if(error) {
+              reject({ error: 'Error closing new file' });
+            }
+            resolve({ success: 'The user has been created' });
+          });
+        });
+      } else {
+        reject({ error:'Could not create new file, it may already exist' });
+      }
+    });
+  });
+}
 
 // Read data from a file
 lib.read = (dir, file): Promise<object> => {
@@ -73,11 +108,19 @@ lib.update = (dir, file, data): Promise<object> => {
 document.addEventListener('DOMContentLoaded', async () => {
   // Select the data path input and read from the settings.json file inside .data
   const saveDataPathInput: HTMLInputElement = document.querySelector('#saveDataPath');
+  const adminAccess: HTMLInputElement = document.querySelector('#adminAccess');
+
+  // If the settings file does not exist
+  if(!fs.existsSync(lib.baseDir + 'settings.json')) {
+    lib.create('', 'settings', { restrictAdminAccess: 'true' });
+  }
+
   const saveDataPath = await lib.read('', 'settings');
   const path = saveDataPath.parsedData;
 
   // Set the input to the saved data path
   saveDataPathInput.value = path.saveDataPath;
+  path.restrictAdminAccess === 'true' ? adminAccess.checked = true : adminAccess.checked = false;
   
   // Select the path label and display or hide it depending on the value
   const pathLabel: HTMLElement = document.querySelector('.pathLabel');
@@ -87,13 +130,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // Function to choose the path for where data will be saved
-function chooseSaveDataPath(): void {
+async function chooseSaveDataPath(): Promise<void> {
   const saveDataPathInput: HTMLInputElement = document.querySelector('#saveDataPath');
-
   // Create a settings object to update the settings.json file
-  const settingsObject: { saveDataPath: string } = {
-    saveDataPath: ''
-  }
+  const currentSetting = await lib.read('', 'settings');
+  const settingsObject = currentSetting.parsedData;
 
   // Open the select directory dialog
   const path: Array<string> = dialog.showOpenDialog({
@@ -106,4 +147,16 @@ function chooseSaveDataPath(): void {
 
   // Update the settings.json file
   lib.update('', 'settings', settingsObject);
+}
+
+// Toggle on and off
+async function toggleSwitch(element) {
+  element.checked ? element.value = true : element.value = false;
+
+  const currentSetting = await lib.read('', 'settings');
+  const parsedSetting = currentSetting.parsedData;
+
+  parsedSetting['restrictAdminAccess'] = element.value;
+
+  await lib.update('', 'settings', parsedSetting);
 }
