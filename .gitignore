@@ -64,4 +64,4 @@ typings/
 package-lock.json
 *.js
 *.js.map
-src/.data
+release-builds

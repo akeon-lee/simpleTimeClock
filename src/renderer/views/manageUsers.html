@@ -7,12 +7,16 @@
 </head>
 <body>
   
+  <!-- Container for notification box -->
+  <div class="notification-container"></div>
+
   <!-- Manage users container -->
-  <div class="users-container ui container">
-    <div class="ui huge grey dividing header center aligned">Manage Users</div>
-    <div class="spacerTB"></div>
-    <form class="ui form">
-      <div class="two fields">
+  <div class="users-container ui container">    
+    <div class="ui huge grey header center aligned">Manage Users</div>
+    <div class="ui divider"></div>
+
+    <form class="ui form" onsubmit="event.preventDefault(); addUser(this);">
+      <div class="two fields name-fields">
         <div class="field">
           <input type="text" name="firstName" placeholder="First Name">
         </div>
@@ -20,19 +24,20 @@
           <input type="text" name="lastName" placeholder="Last Name">
         </div>
       </div>
+      <div class="field password-field">
+        <input type="password" name="password" placeholder="Password">
+      </div>
       <div class="field">
-        <div class="field">
-          <select class="ui fluid search dropdown" name="level">
-            <option value="admin">Admin</option>
-            <option value="employee" selected>Employee</option>
-          </select>
-        </div>
+        <select class="ui fluid search dropdown" name="level">
+          <option value="admin">Admin</option>
+          <option value="employee" selected>Employee</option>
+        </select>
       </div>
       <button class="ui huge green button" type="submit">Add</button>
     </form>
 
-    <div class="ui huge grey dividing header center aligned">View/Edit Users</div>
-    <div class="spacerTB"></div>
+    <div class="ui huge grey header center aligned">View/Edit Users</div>
+    <div class="ui divider"></div>
     <table class="ui celled table">
       <thead>
         <tr>
@@ -40,6 +45,7 @@
           <th>Name</th>
           <th>Level</th>
           <th>Data</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody class="list-users">
@@ -55,10 +61,18 @@
         <!-- Title will go here -->
         <span class="close">&times;</span>
       </div>
-      <div class="modal-body">
+      <div class="modal-body scroller">
         <div class="ui segment right aligned">
-          <button class="ui blue button" onclick="createTableRow()">Add</button>
-          <button class="ui green button" onclick="saveTable()">Save</button>
+          <span style="float:left;">
+            Start Date:
+            <input id="startDate" type="date">
+          </span>
+          <span style="float:left;padding-left:1em;">
+            End Date:
+            <input id="endDate" type="date">
+          </span>
+          <button class="ui blue button" onclick="createTableRow(this)">Add</button>
+          <button class="ui green button" onclick="exportToExcel(this)">Save</button>
         </div>
         <table class="ui celled table">
           <thead>
@@ -66,7 +80,9 @@
               <th>Date</th>
               <th>In Time</th>
               <th>Out Time</th>
+              <th>Hours</th>
               <th>Notes</th>
+              <th class="add-notes-column display-none">Add Notes</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -77,6 +93,35 @@
       </div>
     </div>
   </div>
+
+  <!-- The modal to confirm admin before editing data -->
+  <div class="modal admin-confirm">
+    <div class="inner-modal">
+      <div class="modal-header">
+        <h3>Confirm Admin</h3>
+        <span class="close">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form class="ui form admin-confirm-form" onsubmit="event.preventDefault(); confirmAdminStatus(this);">
+          <div class="field">
+            <label>Enter an admin ID to proceed</label>
+            <div class="ui fluid input focus">
+              <input type="text" class="admin-id" name="admin-id" placeholder="Input ID...">
+            </div>
+          </div>
+          <div class="field">
+            <label>Enter the password to the admin account</label>
+            <div class="ui fluid input focus">
+              <input type="password" class="admin-password" name="admin-password" placeholder="Input ID...">
+            </div>
+          </div>
+          <button class="ui primary button">Submit</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="user-edit-modal-container"></div>
 
   <script> let exports = {}; // This fixes exports not defined bug </script>
   <script src="../public/js/manageUsers.js"></script>

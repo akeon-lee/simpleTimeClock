@@ -24,6 +24,7 @@ $colors: (
   blue: blue,
   skyblue: skyblue,
   green: green,
+  lightGreen: lightgreen,
   purple: purple,
   yellow: yellow,
   lightGrey: lightgrey,
@@ -60,6 +61,24 @@ body {
   padding: 0 assortedNums(veryLight);
 }
 
+.scroller {
+  overflow: auto;
+  max-height: calc(70vh);
+}
+
+.text-center {
+  text-align: center!important;
+}
+
+.notification-container {
+  position: relative;
+  z-index: 99;
+}
+
+.display-none {
+  display: none;
+}
+
 /* Main screen */
 .main-container {
   padding: assortedNums(medium) 0;
@@ -84,6 +103,18 @@ body {
       font-weight: bold;
     }
   }
+}
+
+/* Date Input */
+input[type='date'] {
+  border-radius: assortedNums(veryLight);
+  border: 1px #c5c5c5 solid;
+  padding: assortedNums(veryLight);
+  outline: none;
+}
+
+input[type='date']:focus {
+  box-shadow: 0 0 1px 1px skyblue;
 }
 
 /* Manage users */
@@ -135,10 +166,15 @@ body {
       tbody tr td div,
       tbody tr td div input {
         width: 100%;
+        overflow: auto;
       }
   
       tbody tr td div input[disabled] {
         opacity: 0.7!important;
+      }
+
+      .hours {
+        color: colors(blue);
       }
     }
   
@@ -156,5 +192,12 @@ body {
       text-decoration: none;
       cursor: pointer;
     }
+  }
+}
+
+/* Admin Confirm Modal */
+.admin-confirm {
+  .inner-modal {
+    width: 50%;
   }
 }
