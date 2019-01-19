@@ -706,7 +706,6 @@ async function getData(element): Promise<void> {
   // Insert the users name and id for the title
   const title: string = `<h3 class="insert user-header" data-value="${user.id}">${user.firstName} ${user.lastName} - ${user.id}</h3>`;
   header.insertAdjacentHTML('afterbegin', title);
-
   // If there is user data insert the rows
   if(user.data.length > 0) {
     // Collect each sessions time to add it all up
