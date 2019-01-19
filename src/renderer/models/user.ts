@@ -1,5 +1,5 @@
 export interface User {
-  id: number,
+  id: number | string,
   level: string,
   firstName: string,
   lastName?: string,

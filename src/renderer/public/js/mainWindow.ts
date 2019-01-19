@@ -135,10 +135,6 @@ function displayNotifications(data) {
 
 // The element to load the clock in
 const loadClock: HTMLElement = document.querySelector('.loadClock');
-// Build todays date
-const date: Date = new Date();
-let m: number = date.getMonth() + 1, d: number = date.getDate(), y: number = date.getFullYear();
-const today: string = m.toString() + '-' + checkNum(d).toString() + '-' + y.toString();
 
 /** 
  * The function to create the clock and display it
@@ -175,6 +171,10 @@ const userID: HTMLInputElement = document.querySelector('.userID');
 clockIn.addEventListener('click', (e) => {
   lib.read('users', userID.value)
     .then(user => {
+      // Build todays date
+      const date: Date = new Date();
+      let m: number = date.getMonth() + 1, d: number = date.getDate(), y: number = date.getFullYear();
+      const today: string = m.toString() + '-' + checkNum(d).toString() + '-' + y.toString();
       // Check to see if the user is clocked in
       if(user.session.status) {
         const notifyData = {
@@ -225,6 +225,10 @@ clockIn.addEventListener('click', (e) => {
 clockOut.addEventListener('click', (e) => {
   lib.read('users', userID.value)
     .then(user => {
+      // Build todays date
+      const date: Date = new Date();
+      let m: number = date.getMonth() + 1, d: number = date.getDate(), y: number = date.getFullYear();
+      const today: string = m.toString() + '-' + checkNum(d).toString() + '-' + y.toString();
       // Check to see if the user is clocked in
       if(!user.session.status) {
         // Notification box for errors
