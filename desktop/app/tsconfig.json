@@ -1,0 +1,30 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "esModuleInterop": true,
+        "target": "es6",
+        "moduleResolution": "node",
+        // "sourceMap": true,
+        "outDir": "./dist",
+        "baseUrl": ".",
+        "strict": false, /* Enable all strict type-checking options. */
+        "noImplicitAny": false, /* Raise error on expressions and declarations with an implied 'any' type. */
+        "strictNullChecks": false, /* Enable strict null checks. */
+        "noImplicitThis": false, /* Raise error on 'this' expressions with an implied 'any' type. */
+        "alwaysStrict": false, /* Parse in strict mode and emit "use strict" for each source file. */
+        "paths": {
+            "*": [
+                "node_modules/*",
+                "src/types/*"
+            ]
+        }
+    },
+    "include": [
+        "src/**/*",
+        "renderer",
+        "public"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}

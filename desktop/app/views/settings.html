@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>App Settings</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.4.1/semantic.min.css">
+    <link rel="stylesheet" href="../public/css/style.css">
+</head>
+
+<body>
+
+    <div class="users-container ui container">
+        <div class="ui huge grey header center aligned">App Settings</div>
+        <div class="ui divider"></div>
+
+        <div class="ui small grey header">General:</div>
+        <div class="ui fluid action input green">
+            <input id="saveDataPath" type="text">
+            <button class="ui primary right labeled icon button" onclick="chooseSaveDataPath()">
+                <i class="folder open outline icon"></i>
+                Choose Path
+            </button>
+        </div>
+        <div class="ui blue pointing label pathLabel" style="display:none;">
+            Choose a directory for files to be saved to
+        </div>
+
+        <div class="spacerTB"></div>
+
+        <div class="ui slider checkbox">
+            <input type="checkbox" id="adminAccess" name="adminAccess" onclick="toggleSwitch(this)">
+            <label>Disable Admin Restriction Access</label>
+        </div>
+    </div>
+
+    <script>let exports = {}; // This fixes exports not defined bug</script>
+    <script src="../dist/renderer/settings.js"></script>
+    <script src="../dist/renderer/app.js"></script>
+</body>
+
+</html>
