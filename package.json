@@ -15,7 +15,7 @@
   "license": "MIT",
   "dependencies": {
     "cleave.js": "^1.4.6",
-    "electron": "^3.0.7",
+    "electron": "^9.1.0",
     "exceljs": "^1.6.3"
   },
   "devDependencies": {
